@@ -217,8 +217,8 @@
             connRef.current = conn;
             
             conn.on('open', () => {
+              console.log('Connection opened');
               setConnected(true);
-              // Don't change game state here - it's handled elsewhere
             });
 
             conn.on('data', (data) => {
@@ -228,6 +228,10 @@
             conn.on('close', () => {
               setConnected(false);
               alert('Connection lost with opponent');
+            });
+
+            conn.on('error', (err) => {
+              console.error('Connection error:', err);
             });
           };
 

@@ -176,36 +176,39 @@
             
             try {
               if (joinId) {
+                // Guest joining
                 const peer = new window.Peer();
                 peerRef.current = peer;
                 
                 peer.on('open', (id) => {
-                  console.log('Peer connected as guest:', id);
+                  console.log('Guest peer ID:', id);
                   setMyPeerId(id);
                   setOpponentPeerId(joinId);
                   setIsHost(false);
                 });
 
                 peer.on('error', (err) => {
-                  console.error('Peer error:', err);
+                  console.error('Guest peer error:', err);
                 });
               } else {
+                // Host creating game
                 const peer = new window.Peer();
                 peerRef.current = peer;
                 
                 peer.on('open', (id) => {
-                  console.log('Peer connected as host:', id);
+                  console.log('Host peer ID:', id);
                   setMyPeerId(id);
                   setIsHost(true);
                 });
 
                 peer.on('connection', (conn) => {
-                  console.log('Incoming connection');
+                  console.log('Host received connection from:', conn.peer);
                   setupConnection(conn);
+                  setConnected(true);
                 });
 
                 peer.on('error', (err) => {
-                  console.error('Peer error:', err);
+                  console.error('Host peer error:', err);
                 });
               }
             } catch (err) {

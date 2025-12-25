@@ -3,271 +3,902 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go-Fish Phonics P2P</title>
-    
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <title>Go-Fish Phonics</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- Game Constants ---
+        // Card definitions with actual card names
+        const CARD_SETS = {
+          'short-a': ['apple', 'ant', 'bag', 'crab'],
+          'short-e': ['egg', 'bell', 'nest', 'helmet'],
+          'short-i': ['win', 'lips', 'fin', 'insect'],
+          'short-o': ['octopus', 'stop', 'dog', 'pot'],
+          'short-u': ['cup', 'umbrella', 'drum', 'hut'],
+          'digraph-ch': ['chest', 'chips', 'watch', 'lunch'],
+          'digraph-sh': ['shovel', 'dish', 'brush', 'shell'],
+          'digraph-th-voiced': ['clothes', 'brother', 'weather', 'mother'],
+          'digraph-th-unvoiced': ['bath', 'thanks', 'think', 'path'],
+          'digraph-ph': ['phone', 'photo', 'alphabet', 'elephant'],
+          'consonant-y': ['yo-yo', 'yogurt', 'canyon', 'yard']
+        };
+
         const SET_NAMES = {
-            'short-a': 'Short A (Cat, Hat)',
-            'short-e': 'Short E (Bed, Hen)',
-            'short-i': 'Short I (Pig, Bin)',
-            'short-o': 'Short O (Dog, Hot)',
-            'short-u': 'Short U (Sun, Bug)',
+          'short-a': 'Short A',
+          'short-e': 'Short E',
+          'short-i': 'Short I',
+          'short-o': 'Short O',
+          'short-u': 'Short U',
+          'digraph-ch': 'CH',
+          'digraph-sh': 'SH',
+          'digraph-th-voiced': 'TH (voiced)',
+          'digraph-th-unvoiced': 'TH (unvoiced)',
+          'digraph-ph': 'PH',
+          'consonant-y': 'Y'
         };
 
-        // --- Helper Functions ---
-        const generateDeck = (selectedSets) => {
-            const deck = [];
-            selectedSets.forEach(set => {
-                for (let i = 1; i <= 4; i++) {
-                    deck.push({
-                        id: `${set}-${i}-${Math.random()}`,
-                        set: set,
-                        name: `${set.replace('-', ' ')} ${i}`,
-                    });
-                }
-            });
-            return deck;
+        // Image path helper - point to your GitHub folder structure
+        const getCardImage = (setKey, cardName) => {
+          const baseUrl = 'https://raw.githubusercontent.com/adaptivedean-design/phonics-gofish/main/decks/basics';
+          return `${baseUrl}/${setKey}/${cardName}.png`;
         };
 
-        const shuffle = (array) => {
-            const newArr = [...array];
-            for (let i = newArr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-            }
-            return newArr;
-        };
+        const ArrowUp = () => (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        );
+
+        const Users = ({ size = 20 }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        );
+
+        const Settings = ({ size = 18 }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3"></path>
+          </svg>
+        );
+
+        const Copy = ({ size = 16 }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        );
+
+        const Check = ({ size = 16 }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        );
+
+        const Wifi = ({ size = 20 }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+        );
+
+        const WifiOff = ({ size = 16 }) => (
+          <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+            <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+        );
 
         const GoFishPhonics = () => {
-            // --- State ---
-            const [gameState, setGameState] = useState('setup');
-            const [playerName, setPlayerName] = useState('');
-            const [opponentName, setOpponentName] = useState('');
-            const [isMyTurn, setIsMyTurn] = useState(false);
-            const [settings, setSettings] = useState({
-                endTurnMode: 'always-draw',
-                selectedSets: ['short-a', 'short-e', 'short-i']
-            });
+          const [gameState, setGameState] = useState('setup');
+          const [myPeerId, setMyPeerId] = useState('');
+          const [opponentPeerId, setOpponentPeerId] = useState('');
+          const [playerName, setPlayerName] = useState('');
+          const [opponentName, setOpponentName] = useState('');
+          const [settings, setSettings] = useState({
+            endTurnMode: 'always-draw',
+            selectedSets: Object.keys(CARD_SETS)
+          });
+          const [copied, setCopied] = useState(false);
+          const [connected, setConnected] = useState(false);
+          const [isHost, setIsHost] = useState(false);
+          
+          const [deck, setDeck] = useState([]);
+          const [myHand, setMyHand] = useState([]);
+          const [opponentHandCount, setOpponentHandCount] = useState(0);
+          const [mySets, setMySets] = useState([]);
+          const [opponentSets, setOpponentSets] = useState([]);
+          const [isMyTurn, setIsMyTurn] = useState(false);
+          const [selectedCard, setSelectedCard] = useState(null);
+          const [draggedCard, setDraggedCard] = useState(null);
+          const [dragOverIndex, setDragOverIndex] = useState(null);
+          const [myScore, setMyScore] = useState(0);
+          const [opponentScore, setOpponentScore] = useState(0);
+          const [deckCount, setDeckCount] = useState(0);
 
-            const [myHand, setMyHand] = useState([]);
-            const [opponentHandCount, setOpponentHandCount] = useState(0);
-            const [deckCount, setDeckCount] = useState(0);
-            const [myPeerId, setMyPeerId] = useState('');
-            const [connected, setConnected] = useState(false);
-            const [copied, setCopied] = useState(false);
-            
-            // Check URL to see if we are joining someone
-            const [isHost] = useState(!new URLSearchParams(window.location.search).get('join'));
-            
-            const peerRef = useRef(null);
-            const connRef = useRef(null);
+          const peerRef = useRef(null);
+          const connRef = useRef(null);
 
-            // --- PeerJS Logic ---
-            useEffect(() => {
-                const peer = new Peer();
-                peerRef.current = peer;
-
-                peer.on('open', (id) => {
-                    setMyPeerId(id);
-                    // If we are a guest, we have the ID but we haven't clicked 'Connect' yet
-                });
-
-                if (isHost) {
-                    peer.on('connection', (connection) => {
-                        connRef.current = connection;
-                        setupConnection(connection);
-                    });
+          useEffect(() => {
+            if (window.Peer) {
+              initializePeer();
+            } else {
+              const checkPeer = setInterval(() => {
+                if (window.Peer) {
+                  clearInterval(checkPeer);
+                  initializePeer();
                 }
-
-                return () => peer.destroy();
-            }, [isHost]);
-
-            const setupConnection = (connection) => {
-                connection.on('open', () => {
-                    setConnected(true);
-                    // Sync Names
-                    connection.send({ type: 'NAME_EXCHANGE', name: playerName || (isHost ? 'Host' : 'Guest') });
-                });
-
-                connection.on('data', (data) => {
-                    if (data.type === 'NAME_EXCHANGE') {
-                        setOpponentName(data.name);
-                        // If I receive a name, I should send mine back so they know who I am
-                        connection.send({ type: 'NAME_EXCHANGE_REPLY', name: playerName });
-                    }
-                    if (data.type === 'NAME_EXCHANGE_REPLY') {
-                        setOpponentName(data.name);
-                    }
-                    if (data.type === 'START_GAME') {
-                        setMyHand(data.hand);
-                        setOpponentHandCount(data.oppHandCount);
-                        setDeckCount(data.deckCount);
-                        setSettings(data.settings);
-                        setIsMyTurn(data.startingPlayer === 'guest');
-                        setGameState('playing');
-                    }
-                });
-            };
-
-            const connectToOpponent = () => {
-                const remoteId = new URLSearchParams(window.location.search).get('join');
-                if (remoteId) {
-                    const connection = peerRef.current.connect(remoteId);
-                    connRef.current = connection;
-                    setupConnection(connection);
+              }, 100);
+              
+              setTimeout(() => {
+                clearInterval(checkPeer);
+                if (!window.Peer) {
+                  alert('Failed to load networking library. Please refresh the page.');
                 }
-            };
-
-            const startGame = () => {
-                if (!connRef.current) return;
-
-                const fullDeck = shuffle(generateDeck(settings.selectedSets));
-                const hostHand = fullDeck.splice(0, 5);
-                const guestHand = fullDeck.splice(0, 5);
-
-                setMyHand(hostHand);
-                setOpponentHandCount(guestHand.length);
-                setDeckCount(fullDeck.length);
-                setIsMyTurn(true);
-                setGameState('playing');
-
-                connRef.current.send({
-                    type: 'START_GAME',
-                    hand: guestHand,
-                    oppHandCount: hostHand.length,
-                    deckCount: fullDeck.length,
-                    settings: settings,
-                    startingPlayer: 'host' 
-                });
-            };
-
-            const copyInviteLink = () => {
-                const link = `${window.location.origin}${window.location.pathname}?join=${myPeerId}`;
-                navigator.clipboard.writeText(link);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            };
-
-            // --- UI Screens ---
-            if (gameState === 'setup') {
-                return (
-                    <div className="w-full min-h-screen bg-slate-100 p-4 flex items-center justify-center font-sans">
-                        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full border border-slate-200">
-                            <h1 className="text-3xl font-black text-center text-indigo-600 mb-6 italic">GO-FISH PHONICS</h1>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Display Name</label>
-                                    <input
-                                        type="text"
-                                        value={playerName}
-                                        onChange={(e) => setPlayerName(e.target.value)}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                        placeholder="Enter name..."
-                                    />
-                                </div>
-
-                                {isHost ? (
-                                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                        <p className="text-sm font-semibold text-indigo-900 mb-2">Game Lobby</p>
-                                        <div className="text-xs text-indigo-700 mb-4">
-                                            {connected ? `✅ Opponent Joined: ${opponentName}` : "⏳ Waiting for someone to join..."}
-                                        </div>
-                                        <button onClick={copyInviteLink} className="w-full py-2 bg-white border border-indigo-300 rounded text-indigo-600 text-sm font-bold hover:bg-indigo-100 transition">
-                                            {copied ? 'Link Copied!' : 'Copy Invite Link'}
-                                        </button>
-                                        <button 
-                                            onClick={startGame} 
-                                            disabled={!connected} 
-                                            className={`w-full mt-4 py-3 rounded-lg font-bold text-white transition ${connected ? 'bg-indigo-600 hover:bg-indigo-700 shadow-lg' : 'bg-slate-300 cursor-not-allowed'}`}
-                                        >
-                                            START GAME
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
-                                        <p className="text-sm font-semibold text-emerald-900 mb-2">You've been invited!</p>
-                                        <button 
-                                            onClick={connectToOpponent} 
-                                            disabled={connected} 
-                                            className={`w-full py-3 rounded-lg font-bold text-white transition ${!connected ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300'}`}
-                                        >
-                                            {connected ? 'Connected - Waiting for Host' : 'Connect to Game'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
+              }, 5000);
             }
 
+            return () => {
+              if (peerRef.current) {
+                peerRef.current.destroy();
+              }
+            };
+          }, []);
+
+          const initializePeer = () => {
+            if (!window.Peer) {
+              console.error('PeerJS not available');
+              return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinId = urlParams.get('join');
+            
+            try {
+              if (joinId) {
+                // Guest joining
+                const peer = new window.Peer();
+                peerRef.current = peer;
+                
+                peer.on('open', (id) => {
+                  console.log('Guest peer ID:', id);
+                  setMyPeerId(id);
+                  setOpponentPeerId(joinId);
+                  setIsHost(false);
+                });
+
+                peer.on('error', (err) => {
+                  console.error('Guest peer error:', err);
+                });
+              } else {
+                // Host creating game
+                const peer = new window.Peer();
+                peerRef.current = peer;
+                
+                peer.on('open', (id) => {
+                  console.log('Host peer ID:', id);
+                  setMyPeerId(id);
+                  setIsHost(true);
+                });
+
+                peer.on('connection', (conn) => {
+                  console.log('Host received connection from:', conn.peer);
+                  
+                  conn.on('open', () => {
+                    console.log('Connection to guest is now fully open');
+                    connRef.current = conn;
+                    setConnected(true);
+                    
+                    conn.on('data', (data) => {
+                      console.log('Host received data:', data.type);
+                      handleIncomingData(data);
+                    });
+
+                    conn.on('close', () => {
+                      setConnected(false);
+                      alert('Connection lost with opponent');
+                    });
+
+                    conn.on('error', (err) => {
+                      console.error('Connection error:', err);
+                    });
+                  });
+                });
+
+                peer.on('error', (err) => {
+                  console.error('Host peer error:', err);
+                });
+              }
+            } catch (err) {
+              console.error('Failed to initialize peer:', err);
+            }
+          };
+
+          const setupConnection = (conn) => {
+            connRef.current = conn;
+            
+            conn.on('open', () => {
+              console.log('Connection opened with:', conn.peer);
+              setConnected(true);
+              
+              // Host requests guest's name immediately
+              if (isHost) {
+                sendData({ type: 'request-name' });
+              }
+            });
+
+            conn.on('data', (data) => {
+              handleIncomingData(data);
+            });
+
+            conn.on('close', () => {
+              setConnected(false);
+              alert('Connection lost with opponent');
+            });
+
+            conn.on('error', (err) => {
+              console.error('Connection error:', err);
+            });
+          };
+
+          const connectToOpponent = () => {
+            if (!playerName.trim()) {
+              alert('Please enter your name');
+              return;
+            }
+
+            if (!opponentPeerId) {
+              alert('Invalid connection');
+              return;
+            }
+
+            const conn = peerRef.current.connect(opponentPeerId);
+            setupConnection(conn);
+            setGameState('waiting'); // Guest goes to waiting after clicking connect
+          };
+
+          const sendData = (data) => {
+            if (connRef.current && connRef.current.open) {
+              console.log('Sending data:', data.type);
+              connRef.current.send(data);
+            } else {
+              console.error('Cannot send data - connection not open:', connRef.current);
+            }
+          };
+
+          const handleIncomingData = (data) => {
+            console.log('Received data:', data.type);
+            
+            switch (data.type) {
+              case 'request-name':
+                // Guest sends their name to host
+                sendData({ type: 'player-info', name: playerName });
+                break;
+                
+              case 'player-info':
+                console.log('Received player name:', data.name);
+                setOpponentName(data.name);
+                break;
+              
+              case 'start-game':
+                console.log('Game starting...');
+                setSettings(data.settings);
+                setDeck(data.deck);
+                setMyHand(data.opponentHand);
+                setOpponentHandCount(data.playerHandCount);
+                setDeckCount(data.deckCount);
+                setIsMyTurn(!data.hostStarts);
+                setGameState('playing');
+                break;
+              
+              case 'card-drawn':
+                setDeckCount(data.deckCount);
+                setOpponentHandCount(data.handCount);
+                setIsMyTurn(true);
+                break;
+              
+              case 'card-given':
+                setMyHand([...myHand, data.card]);
+                setOpponentHandCount(data.senderHandCount);
+                break;
+              
+              case 'hand-replenished':
+                setOpponentHandCount(data.handCount);
+                setDeckCount(data.deckCount);
+                break;
+              
+              case 'set-completed':
+                setOpponentSets([...opponentSets, data.set]);
+                setOpponentScore(opponentScore + 1);
+                setOpponentHandCount(data.remainingCards);
+                break;
+              
+              case 'turn-ended':
+                setIsMyTurn(true);
+                break;
+
+              case 'hand-reordered':
+                break;
+            }
+          };
+
+          const initializeDeck = () => {
+            const cards = [];
+            settings.selectedSets.forEach(setKey => {
+              CARD_SETS[setKey].forEach(card => {
+                cards.push({ id: `${setKey}-${card}`, set: setKey, name: card });
+              });
+            });
+            return shuffleArray(cards);
+          };
+
+          const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+          };
+
+          const startGame = () => {
+            if (!playerName.trim()) {
+              alert('Please enter your name');
+              return;
+            }
+
+            if (!connected) {
+              alert('Waiting for opponent to connect');
+              return;
+            }
+
+            console.log('Starting game, sending to:', connRef.current?.peer);
+
+            const newDeck = initializeDeck();
+            const hostHand = newDeck.slice(0, 4);
+            const guestHand = newDeck.slice(4, 8);
+            const remaining = newDeck.slice(8);
+            
+            setDeck(remaining);
+            setMyHand(hostHand);
+            setOpponentHandCount(4);
+            setDeckCount(remaining.length);
+            setIsMyTurn(true);
+            setGameState('playing');
+
+            // Send game state to opponent
+            const gameData = {
+              type: 'start-game',
+              settings: settings,
+              deck: remaining,
+              playerHandCount: 4,
+              opponentHand: guestHand,
+              deckCount: remaining.length,
+              hostStarts: true
+            };
+            
+            console.log('Sending game data:', gameData);
+            sendData(gameData);
+          };
+
+          const drawCard = () => {
+            if (deck.length === 0) {
+              if (settings.endTurnMode === 'always-draw') {
+                endTurn();
+              }
+              return;
+            }
+            
+            const newDeck = [...deck];
+            const drawnCard = newDeck.pop();
+            
+            setMyHand([...myHand, drawnCard]);
+            setDeck(newDeck);
+            setDeckCount(newDeck.length);
+            
+            sendData({
+              type: 'card-drawn',
+              deckCount: newDeck.length,
+              handCount: myHand.length + 1
+            });
+
+            if (settings.endTurnMode === 'always-draw') {
+              endTurn();
+            }
+          };
+
+          const replenishHand = (hand) => {
+            if (deck.length === 0 || hand.length >= 4) return hand;
+            
+            const newDeck = [...deck];
+            const newHand = [...hand];
+            
+            while (newHand.length < 4 && newDeck.length > 0) {
+              const card = newDeck.pop();
+              newHand.push(card);
+            }
+            
+            setDeck(newDeck);
+            setDeckCount(newDeck.length);
+            
+            sendData({
+              type: 'hand-replenished',
+              handCount: newHand.length,
+              deckCount: newDeck.length
+            });
+            
+            return newHand;
+          };
+
+          const giveCard = () => {
+            if (!selectedCard) return;
+            
+            const newMyHand = myHand.filter(c => c.id !== selectedCard.id);
+            
+            sendData({
+              type: 'card-given',
+              card: selectedCard,
+              senderHandCount: newMyHand.length
+            });
+            
+            const replenishedHand = replenishHand(newMyHand);
+            setMyHand(replenishedHand);
+            setSelectedCard(null);
+          };
+
+          const endTurn = () => {
+            setIsMyTurn(false);
+            setSelectedCard(null);
+            sendData({ type: 'turn-ended' });
+          };
+
+          const checkForSets = (hand) => {
+            const setCounts = {};
+            
+            hand.forEach(card => {
+              setCounts[card.set] = (setCounts[card.set] || 0) + 1;
+            });
+            
+            for (const [setKey, count] of Object.entries(setCounts)) {
+              if (count === 4) {
+                completeSet(setKey, hand);
+                return true;
+              }
+            }
+            return false;
+          };
+
+          const completeSet = (setKey, hand) => {
+            const setCards = hand.filter(c => c.set === setKey);
+            const remainingCards = hand.filter(c => c.set !== setKey);
+            
+            setMyHand(remainingCards);
+            setMySets([...mySets, { set: setKey, cards: setCards }]);
+            setMyScore(myScore + 1);
+
+            sendData({
+              type: 'set-completed',
+              set: { set: setKey, cards: setCards },
+              remainingCards: remainingCards.length
+            });
+          };
+
+          useEffect(() => {
+            if (myHand.length > 0) {
+              checkForSets(myHand);
+            }
+          }, [myHand]);
+
+          const handleDragStart = (e, card, index) => {
+            setDraggedCard({ card, index });
+          };
+
+          const handleDragOver = (e, index) => {
+            e.preventDefault();
+            setDragOverIndex(index);
+          };
+
+          const handleDrop = (e, dropIndex) => {
+            e.preventDefault();
+            if (draggedCard === null) return;
+            
+            const newHand = [...myHand];
+            const [removed] = newHand.splice(draggedCard.index, 1);
+            newHand.splice(dropIndex, 0, removed);
+            
+            setMyHand(newHand);
+            setDraggedCard(null);
+            setDragOverIndex(null);
+            
+            sendData({ type: 'hand-reordered' });
+          };
+
+          const copyInviteLink = () => {
+            const link = `${window.location.origin}${window.location.pathname}?join=${myPeerId}`;
+            navigator.clipboard.writeText(link);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          };
+
+          if (gameState === 'setup') {
             return (
-                <div className="w-full h-screen bg-emerald-50 flex flex-col overflow-hidden">
-                    {/* Header */}
-                    <div className="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] uppercase font-bold text-slate-400">Current Turn</span>
-                            <span className="font-bold text-indigo-600">{isMyTurn ? "YOUR TURN" : `${opponentName}'s Turn`}</span>
-                        </div>
-                        <div className="flex gap-6">
-                            <div className="text-right">
-                                <span className="text-[10px] uppercase font-bold text-slate-400">{playerName}</span>
-                                <div className="font-black text-indigo-600">{myHand.length} Cards</div>
-                            </div>
-                            <div className="text-right border-l pl-6">
-                                <span className="text-[10px] uppercase font-bold text-slate-400">{opponentName}</span>
-                                <div className="font-black text-rose-500">{opponentHandCount} Cards</div>
-                            </div>
-                        </div>
+              <div className="w-full h-screen bg-gradient-to-b from-blue-100 to-blue-200 p-8 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full">
+                  <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">
+                    Go-Fish Phonics
+                  </h1>
+                  
+                  {!myPeerId ? (
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-4 text-gray-600">Connecting to network...</p>
                     </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Your Name
+                        </label>
+                        <input
+                          type="text"
+                          value={playerName}
+                          onChange={(e) => setPlayerName(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter your name"
+                        />
+                      </div>
 
-                    {/* Table Area */}
-                    <div className="flex-1 flex flex-col items-center justify-between py-10">
-                        {/* Opponent Cards */}
-                        <div className="flex gap-[-20px]">
-                            {[...Array(opponentHandCount)].map((_, i) => (
-                                <div key={i} className="w-16 h-24 bg-indigo-600 rounded-lg shadow-md border-2 border-white -ml-4 first:ml-0 transform hover:-translate-y-2 transition cursor-help" />
-                            ))}
-                        </div>
+                      {isHost && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <Settings size={18} /> Game Settings
+                            </label>
+                            
+                            <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-600 mb-2">
+                                  Turn End Mode
+                                </label>
+                                <select
+                                  value={settings.endTurnMode}
+                                  onChange={(e) => setSettings({...settings, endTurnMode: e.target.value})}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                >
+                                  <option value="always-draw">Classic Mode (Always Draw)</option>
+                                  <option value="manual-end">Strategic Mode (Manual End)</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {settings.endTurnMode === 'always-draw' 
+                                    ? 'Drawing a card automatically ends your turn'
+                                    : 'You can choose to end your turn without drawing'}
+                                </p>
+                              </div>
 
-                        {/* Deck */}
-                        <div className="relative group">
-                            <div className="w-24 h-32 bg-slate-800 rounded-xl shadow-2xl flex items-center justify-center text-white border-4 border-slate-700">
-                                <span className="text-3xl font-black">{deckCount}</span>
-                            </div>
-                            <p className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 whitespace-nowrap uppercase tracking-widest">Draw Pile</p>
-                        </div>
-
-                        {/* Player Hand */}
-                        <div className="flex gap-2 px-4 overflow-x-auto pb-4 max-w-full">
-                            {myHand.map((card) => (
-                                <div key={card.id} className="min-w-[80px] h-28 bg-white rounded-lg shadow-xl border-2 border-indigo-200 flex flex-col items-center justify-center p-2 text-center hover:scale-105 hover:border-indigo-500 transition cursor-pointer">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase">{card.set}</span>
-                                    <span className="text-xs font-black text-slate-800">{card.name}</span>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-600 mb-2">
+                                  Deck: Basics (11 sets)
+                                </label>
+                                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                                  {Object.entries(SET_NAMES).map(([key, name]) => (
+                                    <div key={key} className="flex items-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={settings.selectedSets.includes(key)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setSettings({...settings, selectedSets: [...settings.selectedSets, key]});
+                                          } else {
+                                            setSettings({...settings, selectedSets: settings.selectedSets.filter(s => s !== key)});
+                                          }
+                                        }}
+                                        className="mr-2"
+                                      />
+                                      {name}
+                                    </div>
+                                  ))}
                                 </div>
-                            ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Users size={20} />
+                                <span className="font-semibold text-blue-900">Invite Opponent</span>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                {connected ? (
+                                  <>
+                                    <span className="text-green-600 text-sm flex items-center gap-1">
+                                      <Wifi size={16} /> Connected
+                                    </span>
+                                    {opponentName && (
+                                      <span className="text-xs text-gray-600">
+                                        {opponentName}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-orange-600 text-sm flex items-center gap-1">
+                                    <WifiOff size={16} /> Waiting...
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-3">
+                              Share this link with your opponent:
+                            </p>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={`${window.location.origin}${window.location.pathname}?join=${myPeerId}`}
+                                readOnly
+                                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm"
+                              />
+                              <button
+                                onClick={copyInviteLink}
+                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
+                              >
+                                {copied ? <Check size={16} /> : <Copy size={16} />}
+                                {copied ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {!isHost && (
+                        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+                          <p className="text-green-900 font-semibold mb-2">Joining game...</p>
+                          <p className="text-sm text-gray-700">
+                            Click Connect to join your opponent's game
+                          </p>
+                          {connected && (
+                            <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
+                              <Wifi size={16} /> Connected! Waiting for host to start...
+                            </p>
+                          )}
                         </div>
+                      )}
+
+                      {isHost ? (
+                        <button
+                          onClick={startGame}
+                          disabled={!connected}
+                          className={`w-full py-3 rounded-lg font-semibold transition ${
+                            connected 
+                              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {connected ? 'Start Game' : 'Waiting for Opponent...'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={connectToOpponent}
+                          disabled={connected}
+                          className={`w-full py-3 rounded-lg font-semibold transition ${
+                            !connected 
+                              ? 'bg-green-600 text-white hover:bg-green-700' 
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {connected ? 'Connected - Waiting for Host' : 'Connect to Game'}
+                        </button>
+                      )}
                     </div>
+                  )}
                 </div>
+              </div>
             );
+          }
+
+          if (gameState === 'waiting') {
+            return (
+              <div className="w-full h-screen bg-gradient-to-b from-blue-100 to-blue-200 p-8 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Connected!</h2>
+                  <p className="text-gray-600">Waiting for host to start the game...</p>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="w-full h-screen bg-gradient-to-b from-green-100 to-green-200 flex flex-col">
+              <div className="bg-white shadow-md p-4 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Wifi size={20} />
+                    <span className="text-xs text-green-600 font-semibold">Connected</span>
+                  </div>
+                  <div className="text-sm">
+                    Mode: <span className="font-semibold">
+                      {settings.endTurnMode === 'always-draw' ? 'Classic' : 'Strategic'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="text-xl font-bold text-center">
+                  {isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}
+                </div>
+                
+                <div className="flex gap-4">
+                  <div className="text-center">
+                    <div className="text-sm text-gray-600">{playerName}</div>
+                    <div className="text-2xl font-bold text-blue-600">{myScore}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm text-gray-600">{opponentName || 'Opponent'}</div>
+                    <div className="text-2xl font-bold text-red-600">{opponentScore}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 p-4 flex items-start justify-center">
+                <div className="flex gap-2">
+                  {Array(opponentHandCount).fill(0).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-20 h-28 bg-blue-500 rounded-lg shadow-lg border-4 border-blue-700"
+                    />
+                  ))}
+                </div>
+                
+                <div className="ml-8 flex gap-2 flex-wrap max-w-md">
+                  {opponentSets.map((set, i) => (
+                    <div key={i} className="text-center mb-4">
+                      <div className="text-xs font-semibold mb-1">{SET_NAMES[set.set]}</div>
+                      <div className="flex gap-1">
+                        {set.cards.map((card, j) => (
+                          <div key={j} className="relative">
+                            <img 
+                              src={getCardImage(card.set, card.name)}
+                              alt={card.name}
+                              className="w-14 h-20 rounded border-2 border-green-600 object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                            <div className="w-14 h-20 bg-green-400 rounded border-2 border-green-600 items-center justify-center text-xs p-1 hidden absolute top-0 left-0">
+                              {card.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-center items-center py-4">
+                <div className="text-center">
+                  <button
+                    onClick={drawCard}
+                    disabled={!isMyTurn || deckCount === 0}
+                    className={`w-24 h-32 rounded-lg shadow-xl border-4 font-bold text-white text-xl
+                      ${deckCount > 0 ? 'bg-purple-600 border-purple-800 hover:bg-purple-700' : 'bg-gray-400 border-gray-600'}
+                      ${!isMyTurn || deckCount === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                  >
+                    {deckCount}
+                  </button>
+                  <div className="text-sm mt-2 font-semibold">Deck</div>
+                </div>
+                
+                {settings.endTurnMode === 'manual-end' && (
+                  <button
+                    onClick={endTurn}
+                    disabled={!isMyTurn}
+                    className={`ml-8 px-6 py-3 rounded-lg font-semibold
+                      ${isMyTurn ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}
+                    `}
+                  >
+                    End Turn
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 p-4 flex items-end justify-center">
+                <div className="flex gap-2">
+                  {myHand.map((card, i) => (
+                    <div
+                      key={card.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, card, i)}
+                      onDragOver={(e) => handleDragOver(e, i)}
+                      onDrop={(e) => handleDrop(e, i)}
+                      onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
+                      className={`w-24 h-32 rounded-lg shadow-lg border-4 cursor-pointer relative overflow-hidden
+                        ${selectedCard?.id === card.id ? 'border-yellow-400 ring-4 ring-yellow-200' : 'border-white'}
+                        ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}
+                      `}
+                    >
+                      <img 
+                        src={getCardImage(card.set, card.name)}
+                        alt={card.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback if image doesn't load
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="w-full h-full bg-white items-center justify-center p-2 text-center hidden flex-col absolute top-0 left-0">
+                        <div className="text-xs font-semibold text-gray-600">
+                          {SET_NAMES[card.set]}
+                        </div>
+                        <div className="text-sm font-bold mt-1">{card.name}</div>
+                      </div>
+                      
+                      {selectedCard?.id === card.id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            giveCard();
+                          }}
+                          className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 shadow-lg z-10"
+                        >
+                          <ArrowUp />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="ml-8 flex gap-2 flex-wrap max-w-md">
+                  {mySets.map((set, i) => (
+                    <div key={i} className="text-center mb-4">
+                      <div className="text-xs font-semibold mb-1">{SET_NAMES[set.set]}</div>
+                      <div className="flex gap-1">
+                        {set.cards.map((card, j) => (
+                          <div key={j} className="relative group">
+                            <img 
+                              src={getCardImage(card.set, card.name)}
+                              alt={card.name}
+                              className="w-14 h-20 rounded border-2 border-green-600 object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                            <div className="w-14 h-20 bg-green-400 rounded border-2 border-green-600 items-center justify-center text-xs p-1 hidden absolute top-0 left-0">
+                              {card.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<GoFishPhonics />);
+        ReactDOM.render(<GoFishPhonics />, document.getElementById('root'));
     </script>
 </body>
 </html>

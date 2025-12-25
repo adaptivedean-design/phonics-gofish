@@ -46,8 +46,6 @@
 
         // Image path helper - point to your GitHub folder structure
         const getCardImage = (setKey, cardName) => {
-          // Replace 'YOUR-USERNAME' with your actual GitHub username
-          // Replace 'phonics-gofish' with your actual repository name
           const baseUrl = 'https://raw.githubusercontent.com/adaptivedean-design/phonics-gofish/main/decks/basics';
           return `${baseUrl}/${setKey}/${cardName}.png`;
         };
@@ -220,8 +218,13 @@
             connRef.current = conn;
             
             conn.on('open', () => {
-              console.log('Connection opened');
+              console.log('Connection opened with:', conn.peer);
               setConnected(true);
+              
+              // Host requests guest's name immediately
+              if (isHost) {
+                sendData({ type: 'request-name' });
+              }
             });
 
             conn.on('data', (data) => {
@@ -261,13 +264,21 @@
           };
 
           const handleIncomingData = (data) => {
+            console.log('Received data:', data.type);
+            
             switch (data.type) {
-              case 'player-info':
-                setOpponentName(data.name);
+              case 'request-name':
+                // Guest sends their name to host
                 sendData({ type: 'player-info', name: playerName });
+                break;
+                
+              case 'player-info':
+                console.log('Received player name:', data.name);
+                setOpponentName(data.name);
                 break;
               
               case 'start-game':
+                console.log('Game starting...');
                 setSettings(data.settings);
                 setDeck(data.deck);
                 setMyHand(data.opponentHand);
@@ -338,7 +349,7 @@
               return;
             }
 
-            sendData({ type: 'player-info', name: playerName });
+            console.log('Starting game, sending to:', connRef.current?.peer);
 
             const newDeck = initializeDeck();
             const hostHand = newDeck.slice(0, 4);
@@ -352,7 +363,8 @@
             setIsMyTurn(true);
             setGameState('playing');
 
-            sendData({
+            // Send game state to opponent
+            const gameData = {
               type: 'start-game',
               settings: settings,
               deck: remaining,
@@ -360,7 +372,10 @@
               opponentHand: guestHand,
               deckCount: remaining.length,
               hostStarts: true
-            });
+            };
+            
+            console.log('Sending game data:', gameData);
+            sendData(gameData);
           };
 
           const drawCard = () => {
@@ -590,15 +605,24 @@
                                 <Users size={20} />
                                 <span className="font-semibold text-blue-900">Invite Opponent</span>
                               </div>
-                              {connected ? (
-                                <span className="text-green-600 text-sm flex items-center gap-1">
-                                  <Wifi size={16} /> Connected
-                                </span>
-                              ) : (
-                                <span className="text-orange-600 text-sm flex items-center gap-1">
-                                  <WifiOff size={16} /> Waiting...
-                                </span>
-                              )}
+                              <div className="flex flex-col items-end gap-1">
+                                {connected ? (
+                                  <>
+                                    <span className="text-green-600 text-sm flex items-center gap-1">
+                                      <Wifi size={16} /> Connected
+                                    </span>
+                                    {opponentName && (
+                                      <span className="text-xs text-gray-600">
+                                        {opponentName}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-orange-600 text-sm flex items-center gap-1">
+                                    <WifiOff size={16} /> Waiting...
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <p className="text-sm text-gray-700 mb-3">
                               Share this link with your opponent:
@@ -857,4 +881,3 @@
     </script>
 </body>
 </html>
-

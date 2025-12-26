@@ -120,7 +120,6 @@
           const [copied, setCopied] = useState(false);
           const [connected, setConnected] = useState(false);
           const [isHost, setIsHost] = useState(false);
-          const [connectionStatus, setConnectionStatus] = useState('disconnected'); // Add visual trigger
           
           const [deck, setDeck] = useState([]);
           const [myHand, setMyHand] = useState([]);
@@ -293,29 +292,18 @@
 
           const sendData = (data) => {
             if (connRef.current && connRef.current.open) {
-              console.log('Sending data:', data.type);
               connRef.current.send(data);
-            } else {
-              console.error('Cannot send data - connection not open:', connRef.current);
             }
           };
 
           const handleIncomingData = (data) => {
-            console.log('Received data:', data.type);
-            
             switch (data.type) {
-              case 'request-name':
-                // Guest sends their name to host
-                sendData({ type: 'player-info', name: playerName });
-                break;
-                
               case 'player-info':
-                console.log('Received player name:', data.name);
                 setOpponentName(data.name);
+                sendData({ type: 'player-info', name: playerName });
                 break;
               
               case 'start-game':
-                console.log('Game starting...');
                 setSettings(data.settings);
                 setDeck(data.deck);
                 setMyHand(data.opponentHand);
@@ -386,7 +374,7 @@
               return;
             }
 
-            console.log('Starting game, sending to:', connRef.current?.peer);
+            sendData({ type: 'player-info', name: playerName });
 
             const newDeck = initializeDeck();
             const hostHand = newDeck.slice(0, 4);
@@ -400,8 +388,7 @@
             setIsMyTurn(true);
             setGameState('playing');
 
-            // Send game state to opponent
-            const gameData = {
+            sendData({
               type: 'start-game',
               settings: settings,
               deck: remaining,
@@ -409,10 +396,7 @@
               opponentHand: guestHand,
               deckCount: remaining.length,
               hostStarts: true
-            };
-            
-            console.log('Sending game data:', gameData);
-            sendData(gameData);
+            });
           };
 
           const drawCard = () => {
@@ -643,7 +627,7 @@
                                 <span className="font-semibold text-blue-900">Invite Opponent</span>
                               </div>
                               <div className="flex flex-col items-end gap-1">
-                                {connected || connectionStatus === 'connected' ? (
+                                {connected ? (
                                   <>
                                     <span className="text-green-600 text-sm flex items-center gap-1">
                                       <Wifi size={16} /> Connected
@@ -700,14 +684,14 @@
                       {isHost ? (
                         <button
                           onClick={startGame}
-                          disabled={!connected && connectionStatus !== 'connected'}
+                          disabled={!connected}
                           className={`w-full py-3 rounded-lg font-semibold transition ${
-                            connected || connectionStatus === 'connected'
+                            connected 
                               ? 'bg-blue-600 text-white hover:bg-blue-700' 
                               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           }`}
                         >
-                          {connected || connectionStatus === 'connected' ? 'Start Game' : 'Waiting for Opponent...'}
+                          {connected ? 'Start Game' : 'Waiting for Opponent...'}
                         </button>
                       ) : (
                         <button

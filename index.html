@@ -110,7 +110,14 @@
             if (!playerName.trim()) { alert('Please enter your name'); return; }
             if (!opponentPeerId) { alert('Invalid connection'); return; }
             const conn = peerRef.current.connect(opponentPeerId);
-            setupConnection(conn);
+            connRef.current = conn;
+            conn.on('open', () => { 
+              console.log('Guest connected, sending name:', playerName);
+              setConnected(true); 
+              conn.send({ type: 'player-info', name: playerName });
+            });
+            conn.on('data', (data) => handleIncomingData(data));
+            conn.on('close', () => { setConnected(false); alert('Connection lost'); });
           };
 
           const sendData = (data) => { if (connRef.current?.open) connRef.current.send(data); };

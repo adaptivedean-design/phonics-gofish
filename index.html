@@ -53,7 +53,8 @@
           const [opponentName, setOpponentName] = useState('');
           const [settings, setSettings] = useState({
             endTurnMode: 'always-draw',
-            selectedSets: Object.keys(CARD_SETS)
+            selectedSets: Object.keys(CARD_SETS),
+            firstPlayer: 'host'
           });
           const [copied, setCopied] = useState(false);
           const [connected, setConnected] = useState(false);
@@ -148,8 +149,9 @@
             sendData({ type: 'player-info', name: playerName });
             const newDeck = initializeDeck();
             const hostHand = newDeck.slice(0, 4), guestHand = newDeck.slice(4, 8), remaining = newDeck.slice(8);
-            setDeck(remaining); setMyHand(hostHand); setOpponentHandCount(4); setDeckCount(remaining.length); setIsMyTurn(true); setGameState('playing');
-            sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: true });
+            const hostGoesFirst = settings.firstPlayer === 'host';
+            setDeck(remaining); setMyHand(hostHand); setOpponentHandCount(4); setDeckCount(remaining.length); setIsMyTurn(hostGoesFirst); setGameState('playing');
+            sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: hostGoesFirst });
           };
 
           const drawCard = () => {
@@ -226,6 +228,9 @@
                           <div><label className="block text-sm font-medium text-gray-700 mb-2">Turn End Mode</label><select value={settings.endTurnMode} onChange={(e) => setSettings({...settings, endTurnMode: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="always-draw">Classic Mode</option><option value="manual-end">Strategic Mode</option></select></div>
                         )}
                       </div>
+                      {isHost && (
+                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Who Goes First?</label><select value={settings.firstPlayer} onChange={(e) => setSettings({...settings, firstPlayer: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="host">Host (You)</option><option value="opponent">Opponent</option></select></div>
+                      )}
                       {isHost && (
                         <div><label className="block text-sm font-medium text-gray-700 mb-2"><Settings size={18} /> Select Card Sets</label><div className="bg-gray-50 p-4 rounded-lg"><div className="grid grid-cols-4 gap-3 text-sm">{Object.entries(SET_NAMES).map(([key, name]) => (<div key={key} className="flex items-center"><input type="checkbox" checked={settings.selectedSets.includes(key)} onChange={(e) => { if (e.target.checked) setSettings({...settings, selectedSets: [...settings.selectedSets, key]}); else setSettings({...settings, selectedSets: settings.selectedSets.filter(s => s !== key)}); }} className="mr-2" />{name}</div>))}</div></div></div>
                       )}

@@ -116,8 +116,13 @@
           const sendData = (data) => { if (connRef.current?.open) connRef.current.send(data); };
 
           const handleIncomingData = (data) => {
+            console.log('Received data:', data);
             switch (data.type) {
-              case 'player-info': setOpponentName(data.name); sendData({ type: 'player-info', name: playerName }); break;
+              case 'player-info': 
+                console.log('Setting opponent name to:', data.name);
+                setOpponentName(data.name); 
+                sendData({ type: 'player-info', name: playerName }); 
+                break;
               case 'start-game': setSettings(data.settings); setDeck(data.deck); setMyHand(data.opponentHand); setOpponentHandCount(data.playerHandCount); setDeckCount(data.deckCount); setIsMyTurn(!data.hostStarts); setGameState('playing'); break;
               case 'card-drawn': setDeckCount(data.deckCount); setOpponentHandCount(data.handCount); setIsMyTurn(true); break;
               case 'card-given': setMyHand([...myHand, data.card]); setOpponentHandCount(data.senderHandCount); break;

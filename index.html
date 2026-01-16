@@ -84,8 +84,21 @@
               }, 100);
               setTimeout(() => { clearInterval(checkPeer); if (!window.Peer) alert('Failed to load networking library.'); }, 5000);
             }
-            return () => { if (peerRef.current) peerRef.current.destroy(); };
-          }, []);
+            
+            // Handle window close - send disconnect message
+            const handleBeforeUnload = () => {
+              if (connRef.current && connRef.current.open && gameState === 'playing') {
+                sendData({ type: 'player-disconnected' });
+              }
+            };
+            
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            
+            return () => { 
+              if (peerRef.current) peerRef.current.destroy();
+              window.removeEventListener('beforeunload', handleBeforeUnload);
+            };
+          }, [gameState]);
 
           const initializePeer = () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -151,6 +164,12 @@
                 console.log('Setting opponent name to:', data.name);
                 setOpponentName(data.name); 
                 sendData({ type: 'player-info', name: playerName }); 
+                break;
+              case 'player-disconnected':
+                console.log('Opponent sent disconnect message');
+                setConnected(false);
+                setGameEnded(true);
+                setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
                 break;
               case 'start-game': setSettings(data.settings); setDeck(data.deck); setMyHand(data.opponentHand); setOpponentHandCount(data.playerHandCount); setDeckCount(data.deckCount); setIsMyTurn(!data.hostStarts); setGameState('playing'); break;
               case 'card-drawn': setDeckCount(data.deckCount); setOpponentHandCount(data.handCount); setIsMyTurn(true); break;

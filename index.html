@@ -73,6 +73,8 @@
           const [deckCount, setDeckCount] = useState(0);
           const [gameEnded, setGameEnded] = useState(false);
           const [disconnectMessage, setDisconnectMessage] = useState('');
+          const [lastPingReceived, setLastPingReceived] = useState(Date.now());
+          const [isMyTurnToPing, setIsMyTurnToPing] = useState(false);
           const peerRef = useRef(null);
           const connRef = useRef(null);
 
@@ -152,7 +154,27 @@
                 setOpponentName(data.name); 
                 sendData({ type: 'player-info', name: playerName }); 
                 break;
-              case 'start-game': setSettings(data.settings); setDeck(data.deck); setMyHand(data.opponentHand); setOpponentHandCount(data.playerHandCount); setDeckCount(data.deckCount); setIsMyTurn(!data.hostStarts); setGameState('playing'); break;
+              case 'ping':
+                console.log('Received ping from opponent');
+                setLastPingReceived(Date.now());
+                sendData({ type: 'pong' });
+                break;
+              case 'pong':
+                console.log('Received pong from opponent');
+                setLastPingReceived(Date.now());
+                setIsMyTurnToPing(true);
+                break;
+              case 'start-game': 
+                setSettings(data.settings); 
+                setDeck(data.deck); 
+                setMyHand(data.opponentHand); 
+                setOpponentHandCount(data.playerHandCount); 
+                setDeckCount(data.deckCount); 
+                setIsMyTurn(!data.hostStarts);
+                setIsMyTurnToPing(!data.hostStarts);
+                setLastPingReceived(Date.now());
+                setGameState('playing'); 
+                break;
               case 'card-drawn': setDeckCount(data.deckCount); setOpponentHandCount(data.handCount); setIsMyTurn(true); break;
               case 'card-given': setMyHand([...myHand, data.card]); setOpponentHandCount(data.senderHandCount); break;
               case 'hand-replenished': setOpponentHandCount(data.handCount); setDeckCount(data.deckCount); break;
@@ -171,9 +193,33 @@
             const newDeck = initializeDeck();
             const hostHand = newDeck.slice(0, 4), guestHand = newDeck.slice(4, 8), remaining = newDeck.slice(8);
             const hostGoesFirst = settings.firstPlayer === 'host';
-            setDeck(remaining); setMyHand(hostHand); setOpponentHandCount(4); setDeckCount(remaining.length); setIsMyTurn(hostGoesFirst); setGameState('playing');
+            setDeck(remaining); setMyHand(hostHand); setOpponentHandCount(4); setDeckCount(remaining.length); setIsMyTurn(hostGoesFirst); setIsMyTurnToPing(hostGoesFirst); setLastPingReceived(Date.now()); setGameState('playing');
             sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: hostGoesFirst });
           };
+
+          // Ping system: alternating pings every 10 seconds
+          useEffect(() => {
+            if (gameState !== 'playing' || !connected) return;
+            
+            const pingInterval = setInterval(() => {
+              if (isMyTurnToPing) {
+                console.log('Sending ping to opponent');
+                sendData({ type: 'ping' });
+                setIsMyTurnToPing(false);
+              }
+              
+              // Check if we haven't received a ping/pong in 25 seconds (2.5 cycles)
+              const timeSinceLastPing = Date.now() - lastPingReceived;
+              if (timeSinceLastPing > 25000) {
+                console.log('No response from opponent for 25 seconds - disconnected');
+                setConnected(false);
+                setGameEnded(true);
+                setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
+              }
+            }, 10000);
+            
+            return () => clearInterval(pingInterval);
+          }, [gameState, connected, isMyTurnToPing, lastPingReceived, opponentName]);
 
           const drawCard = () => {
             if (deck.length === 0) { if (settings.endTurnMode === 'always-draw') endTurn(); return; }

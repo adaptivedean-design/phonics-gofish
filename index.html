@@ -197,7 +197,7 @@
             sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: hostGoesFirst });
           };
 
-          // Ping system: alternating pings every 10 seconds
+// Ping system: alternating pings every 3 seconds
           useEffect(() => {
             if (gameState !== 'playing' || !connected) return;
             
@@ -208,15 +208,15 @@
                 setIsMyTurnToPing(false);
               }
               
-              // Check if we haven't received a ping/pong in 25 seconds (2.5 cycles)
+              // Check if we haven't received a ping/pong in 8 seconds (2.5+ cycles)
               const timeSinceLastPing = Date.now() - lastPingReceived;
-              if (timeSinceLastPing > 25000) {
-                console.log('No response from opponent for 25 seconds - disconnected');
+              if (timeSinceLastPing > 8000) {
+                console.log('No response from opponent for 8 seconds - disconnected');
                 setConnected(false);
                 setGameEnded(true);
                 setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
               }
-            }, 10000);
+            }, 3000);
             
             return () => clearInterval(pingInterval);
           }, [gameState, connected, isMyTurnToPing, lastPingReceived, opponentName]);
@@ -335,3 +335,4 @@
     </script>
 </body>
 </html>
+

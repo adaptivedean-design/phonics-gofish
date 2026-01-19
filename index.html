@@ -150,9 +150,12 @@
             console.log('Received data:', data);
             switch (data.type) {
               case 'player-info': 
-                console.log('Setting opponent name to:', data.name);
-                setOpponentName(data.name); 
-                sendData({ type: 'player-info', name: playerName }); 
+                console.log('Received player-info, setting opponent name to:', data.name);
+                setOpponentName(data.name);
+                if (!data.isResponse) {
+                  console.log('Sending player-info response with name:', playerName);
+                  sendData({ type: 'player-info', name: playerName, isResponse: true }); 
+                }
                 break;
               case 'ping':
                 console.log('Received ping from opponent');
@@ -335,6 +338,7 @@
     </script>
 </body>
 </html>
+
 
 
 

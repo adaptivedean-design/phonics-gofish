@@ -218,14 +218,17 @@
           const startGame = () => {
             if (!playerName.trim()) { alert('Please enter your name'); return; }
             if (!connected) { alert('Waiting for opponent'); return; }
+            console.log('startGame called, isHost:', isHost);
             sendData({ type: 'player-info', name: playerName });
             const newDeck = initializeDeck();
+            console.log('Deck initialized with', newDeck.length, 'cards');
             const hostHand = newDeck.slice(0, 4), guestHand = newDeck.slice(4, 8), remaining = newDeck.slice(8);
+            console.log('Host gets', hostHand.length, 'cards, guest gets', guestHand.length, 'cards, deck has', remaining.length, 'cards');
             const hostGoesFirst = settings.firstPlayer === 'host';
             setDeck(remaining); setMyHand(hostHand); setOpponentHandCount(4); setDeckCount(remaining.length); setIsMyTurn(hostGoesFirst); setIsMyTurnToPing(hostGoesFirst); setLastPingReceived(Date.now()); setGameState('playing');
-            sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: hostGoesFirst, hostName: playerName }); 
+            sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: hostGoesFirst, hostName: playerName });
           };
-
+            
            // Ping system: alternating pings every 1 second
           useEffect(() => {
             if (gameState !== 'playing' || !connected) return;
@@ -386,6 +389,7 @@
     </script>
 </body>
 </html>
+
 
 
 

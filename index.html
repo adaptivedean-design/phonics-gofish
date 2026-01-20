@@ -169,7 +169,7 @@
                 break;
              case 'start-game': 
                 setSettings(data.settings); 
-                setDeck(data.deck); 
+                setDeck([]); // Opponent doesn't hold the deck
                 setMyHand(data.opponentHand); 
                 setOpponentHandCount(data.playerHandCount); 
                 setDeckCount(data.deckCount); 
@@ -180,6 +180,21 @@
                 setGameState('playing'); 
                 break;
               case 'card-drawn': setDeckCount(data.deckCount); setOpponentHandCount(data.handCount); setIsMyTurn(true); break;
+              case 'draw-request': 
+                if (isHost && deck.length > 0) {
+                  const newDeck = [...deck];
+                  const drawnCard = newDeck.pop();
+                  setDeck(newDeck);
+                  setDeckCount(newDeck.length);
+                  setOpponentHandCount(opponentHandCount + 1);
+                  sendData({ type: 'card-dealt', card: drawnCard, deckCount: newDeck.length });
+                }
+                break;
+              case 'card-dealt':
+                setMyHand([...myHand, data.card]);
+                setDeckCount(data.deckCount);
+                if (settings.endTurnMode === 'always-draw') setIsMyTurn(false);
+                break;
               case 'card-given': setMyHand([...myHand, data.card]); setOpponentHandCount(data.senderHandCount); break;
               case 'hand-replenished': setOpponentHandCount(data.handCount); setDeckCount(data.deckCount); break;
               case 'set-completed': setOpponentSets([...opponentSets, data.set]); setOpponentScore(opponentScore + 1); setOpponentHandCount(data.remainingCards); break;
@@ -226,22 +241,39 @@
           }, [gameState, connected, isMyTurnToPing, lastPingReceived, opponentName]);
 
           const drawCard = () => {
-            if (deck.length === 0) { if (settings.endTurnMode === 'always-draw') endTurn(); return; }
-            const newDeck = [...deck], drawnCard = newDeck.pop();
-            setMyHand([...myHand, drawnCard]); setDeck(newDeck); setDeckCount(newDeck.length);
-            sendData({ type: 'card-drawn', deckCount: newDeck.length, handCount: myHand.length + 1 });
-            if (settings.endTurnMode === 'always-draw') endTurn();
+            if (deckCount === 0) { if (settings.endTurnMode === 'always-draw') endTurn(); return; }
+            
+            if (isHost) {
+              // Host draws directly from their deck
+              const newDeck = [...deck];
+              const drawnCard = newDeck.pop();
+              setMyHand([...myHand, drawnCard]);
+              setDeck(newDeck);
+              setDeckCount(newDeck.length);
+              sendData({ type: 'card-drawn', deckCount: newDeck.length, handCount: myHand.length + 1 });
+              if (settings.endTurnMode === 'always-draw') endTurn();
+            } else {
+              // Opponent requests a card from host
+              sendData({ type: 'draw-request' });
+            }
           };
 
           const replenishHand = (hand) => {
-            if (deck.length === 0 || hand.length >= 4) return hand;
-            const newDeck = [...deck], newHand = [...hand];
-            while (newHand.length < 4 && newDeck.length > 0) newHand.push(newDeck.pop());
-            setDeck(newDeck); setDeckCount(newDeck.length);
-            sendData({ type: 'hand-replenished', handCount: newHand.length, deckCount: newDeck.length });
-            return newHand;
-          };
-
+            if (deckCount === 0 || hand.length >= 4) return hand;
+            
+            if (isHost) {
+              const newDeck = [...deck], newHand = [...hand];
+              while (newHand.length < 4 && newDeck.length > 0) newHand.push(newDeck.pop());
+              setDeck(newDeck); setDeckCount(newDeck.length);
+              sendData({ type: 'hand-replenished', handCount: newHand.length, deckCount: newDeck.length });
+              return newHand;
+            } else {
+              // For opponent, just return the hand as-is
+              // Card replenishment will be handled by host sending cards
+              return hand;
+            }
+          };  
+  
           const giveCard = () => {
             if (!selectedCard) return;
             const newMyHand = myHand.filter(c => c.id !== selectedCard.id);
@@ -338,6 +370,7 @@
     </script>
 </body>
 </html>
+
 
 
 

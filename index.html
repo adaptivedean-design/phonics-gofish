@@ -181,16 +181,20 @@
                 break;
               case 'card-drawn': setDeckCount(data.deckCount); setOpponentHandCount(data.handCount); setIsMyTurn(true); break;
               case 'draw-request': 
+                console.log('Host received draw-request, isHost:', isHost, 'deck.length:', deck.length);
                 if (isHost && deck.length > 0) {
                   const newDeck = [...deck];
                   const drawnCard = newDeck.pop();
+                  console.log('Host dealing card to opponent:', drawnCard);
                   setDeck(newDeck);
                   setDeckCount(newDeck.length);
                   setOpponentHandCount(opponentHandCount + 1);
                   sendData({ type: 'card-dealt', card: drawnCard, deckCount: newDeck.length });
                 } else if (isHost && deck.length === 0) {
-                  // Notify opponent deck is empty
+                  console.log('Deck is empty, notifying opponent');
                   sendData({ type: 'deck-empty' });
+                } else {
+                  console.log('NOT handling draw-request - isHost:', isHost, 'deck.length:', deck.length);
                 }
                 break;
               case 'deck-empty':
@@ -382,6 +386,7 @@
     </script>
 </body>
 </html>
+
 
 
 

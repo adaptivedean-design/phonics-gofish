@@ -247,12 +247,14 @@
           }, [gameState, connected, isMyTurnToPing, lastPingReceived, opponentName]);
 
           const drawCard = () => {
+            console.log('drawCard called, deckCount:', deckCount, 'isHost:', isHost);
             if (deckCount === 0) { if (settings.endTurnMode === 'always-draw') endTurn(); return; }
             
             if (isHost) {
               // Host draws directly from their deck
               const newDeck = [...deck];
               const drawnCard = newDeck.pop();
+              console.log('Host drawing card:', drawnCard);
               setMyHand([...myHand, drawnCard]);
               setDeck(newDeck);
               setDeckCount(newDeck.length);
@@ -260,6 +262,7 @@
               if (settings.endTurnMode === 'always-draw') endTurn();
             } else {
               // Opponent requests a card from host
+              console.log('Opponent requesting card from host');
               sendData({ type: 'draw-request' });
             }
           };
@@ -379,6 +382,7 @@
     </script>
 </body>
 </html>
+
 
 
 

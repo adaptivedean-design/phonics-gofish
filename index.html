@@ -188,10 +188,16 @@
                   setDeckCount(newDeck.length);
                   setOpponentHandCount(opponentHandCount + 1);
                   sendData({ type: 'card-dealt', card: drawnCard, deckCount: newDeck.length });
+                } else if (isHost && deck.length === 0) {
+                  // Notify opponent deck is empty
+                  sendData({ type: 'deck-empty' });
                 }
                 break;
+              case 'deck-empty':
+                if (settings.endTurnMode === 'always-draw') setIsMyTurn(false);
+                break;
               case 'card-dealt':
-                setMyHand([...myHand, data.card]);
+                setMyHand(prevHand => [...prevHand, data.card]);
                 setDeckCount(data.deckCount);
                 if (settings.endTurnMode === 'always-draw') setIsMyTurn(false);
                 break;
@@ -268,11 +274,14 @@
               sendData({ type: 'hand-replenished', handCount: newHand.length, deckCount: newDeck.length });
               return newHand;
             } else {
-              // For opponent, just return the hand as-is
-              // Card replenishment will be handled by host sending cards
-              return hand;
+              // For opponent, request cards from host until hand is full
+              const cardsNeeded = 4 - hand.length;
+              for (let i = 0; i < cardsNeeded && deckCount > 0; i++) {
+                sendData({ type: 'draw-request' });
+              }
+              return hand; // Hand will be updated as cards arrive
             }
-          };  
+          };
   
           const giveCard = () => {
             if (!selectedCard) return;
@@ -370,6 +379,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -206,8 +206,11 @@
               case 'card-dealt':
                 setMyHand(prevHand => [...prevHand, data.card]);
                 setDeckCount(data.deckCount);
-                if (settings.endTurnMode === 'always-draw') setIsMyTurn(false);
-                break;
+                if (settings.endTurnMode === 'always-draw') {
+                  setIsMyTurn(false);
+                  sendData({ type: 'turn-ended' });
+                }
+                break;      
               case 'card-given': setMyHand([...myHand, data.card]); setOpponentHandCount(data.senderHandCount); break;
               case 'hand-replenished': setOpponentHandCount(data.handCount); setDeckCount(data.deckCount); break;
               case 'set-completed': setOpponentSets([...opponentSets, data.set]); setOpponentScore(opponentScore + 1); setOpponentHandCount(data.remainingCards); break;
@@ -395,6 +398,7 @@
     </script>
 </body>
 </html>
+
 
 
 

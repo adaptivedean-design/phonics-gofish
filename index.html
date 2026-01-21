@@ -314,13 +314,19 @@
 
           const endTurn = () => { setIsMyTurn(false); setSelectedCard(null); sendData({ type: 'turn-ended' }); };
           const checkForSets = (hand) => {
-            const setCounts = {};
-            hand.forEach(card => setCounts[card.set] = (setCounts[card.set] || 0) + 1);
-            for (const [setKey, count] of Object.entries(setCounts)) {
-              if (count === 4) { completeSet(setKey, hand); return true; }
+            // Check for 4 consecutive cards of the same set
+            for (let i = 0; i <= hand.length - 4; i++) {
+              const fourCards = hand.slice(i, i + 4);
+              const firstSet = fourCards[0].set;
+              
+              // Check if all 4 consecutive cards are from the same set
+              if (fourCards.every(card => card.set === firstSet)) {
+                completeSet(firstSet, hand);
+                return true;
+              }
             }
             return false;
-          };
+          };  
 
           const completeSet = (setKey, hand) => {
             const setCards = hand.filter(c => c.set === setKey);
@@ -408,6 +414,7 @@
     </script>
 </body>
 </html>
+
 
 
 

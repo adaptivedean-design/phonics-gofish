@@ -323,11 +323,18 @@
           };
 
           const completeSet = (setKey, hand) => {
-            const setCards = hand.filter(c => c.set === setKey), remainingCards = hand.filter(c => c.set !== setKey);
-            setMyHand(remainingCards); setMySets([...mySets, { set: setKey, cards: setCards }]); setMyScore(myScore + 1);
-            sendData({ type: 'set-completed', set: { set: setKey, cards: setCards }, remainingCards: remainingCards.length });
+            const setCards = hand.filter(c => c.set === setKey);
+            const remainingCards = hand.filter(c => c.set !== setKey);
+            
+            // Replenish hand immediately after completing set
+            const replenishedHand = replenishHand(remainingCards);
+            
+            setMyHand(replenishedHand);
+            setMySets([...mySets, { set: setKey, cards: setCards }]);
+            setMyScore(myScore + 1);
+            sendData({ type: 'set-completed', set: { set: setKey, cards: setCards }, remainingCards: replenishedHand.length });
           };
-
+            
           useEffect(() => { if (myHand.length > 0) checkForSets(myHand); }, [myHand]);
 
           const handleDragStart = (e, card, index) => setDraggedCard({ card, index });
@@ -401,6 +408,7 @@
     </script>
 </body>
 </html>
+
 
 
 

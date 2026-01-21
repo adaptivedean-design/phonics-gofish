@@ -210,8 +210,11 @@
                   setIsMyTurn(false);
                   sendData({ type: 'turn-ended' });
                 }
+                break;
+              case 'card-given': 
+                setMyHand(prevHand => [...prevHand, data.card]); 
+                setOpponentHandCount(data.senderHandCount); 
                 break;      
-              case 'card-given': setMyHand([...myHand, data.card]); setOpponentHandCount(data.senderHandCount); break;
               case 'hand-replenished': setOpponentHandCount(data.handCount); setDeckCount(data.deckCount); break;
               case 'set-completed': setOpponentSets([...opponentSets, data.set]); setOpponentScore(opponentScore + 1); setOpponentHandCount(data.remainingCards); break;
               case 'turn-ended': setIsMyTurn(true); break;
@@ -398,6 +401,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -217,7 +217,11 @@
                 setOpponentHandCount(data.senderHandCount); 
                 break;      
               case 'hand-replenished': setOpponentHandCount(data.handCount); setDeckCount(data.deckCount); break;
-              case 'set-completed': setOpponentSets([...opponentSets, data.set]); setOpponentScore(opponentScore + 1); setOpponentHandCount(data.remainingCards); break;
+              case 'set-completed': 
+                setOpponentSets(prevSets => [...prevSets, data.set]); 
+                setOpponentScore(prevScore => prevScore + 1); 
+                setOpponentHandCount(data.remainingCards); 
+                break;
               case 'turn-ended': setIsMyTurn(true); break;
               case 'game-over':
                 // Opponent detected game over, verify on our end
@@ -231,6 +235,19 @@
                   }
                   setGameEnded(true);
                 }
+                break;
+              case 'return-to-setup':
+                setGameState('setup');
+                setGameEnded(false);
+                setWinner(null);
+                setMyHand([]);
+                setOpponentHandCount(0);
+                setMySets([]);
+                setOpponentSets([]);
+                setMyScore(0);
+                setOpponentScore(0);
+                setDeck([]);
+                setDeckCount(0);
                 break;
                 }
                };
@@ -433,7 +450,7 @@
                   </div>
                 </div>
               )}
-              {gameEnded && !disconnectMessage && winner && (
+               {gameEnded && !disconnectMessage && winner && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md text-center">
                     <h2 className="text-3xl font-bold mb-4">
@@ -444,28 +461,28 @@
                       <p className="font-bold">{playerName}: {myScore}</p>
                       <p className="font-bold">{opponentName}: {opponentScore}</p>
                     </div>
-                    <div className="flex flex-col gap-3">
-                      <button 
-                        onClick={() => window.location.reload()} 
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-                      >
-                        New Game
-                      </button>
-                      {isHost && (
-                        <button 
-                          onClick={() => { setGameState('setup'); setGameEnded(false); setWinner(null); }} 
-                          className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-                        >
-                          Change Settings
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => window.close()} 
-                        className="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700"
-                      >
-                        Quit
-                      </button>
-                    </div>
+                    <p className="text-gray-600 text-sm mb-4">
+                      {isHost ? 'Return to setup to start a new game or change settings.' : 'Waiting for host to start a new game...'}
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setGameState('setup');
+                        setGameEnded(false);
+                        setWinner(null);
+                        setMyHand([]);
+                        setOpponentHandCount(0);
+                        setMySets([]);
+                        setOpponentSets([]);
+                        setMyScore(0);
+                        setOpponentScore(0);
+                        setDeck([]);
+                        setDeckCount(0);
+                        sendData({ type: 'return-to-setup' });
+                      }} 
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+                    >
+                      Return to Setup
+                    </button>
                   </div>
                 </div>
               )}
@@ -480,6 +497,7 @@
     </script>
 </body>
 </html>
+
 
 
 

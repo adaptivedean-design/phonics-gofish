@@ -224,18 +224,25 @@
                 break;
               case 'turn-ended': setIsMyTurn(true); break;
               case 'game-over':
-                // Opponent detected game over, verify on our end
-                if (deckCount === 0 && myHand.length === 0 && opponentHandCount === 0) {
-                  if (myScore > opponentScore) {
-                    setWinner('you');
-                  } else if (opponentScore > myScore) {
-                    setWinner('opponent');
-                  } else {
-                    setWinner('tie');
-                  }
-                  setGameEnded(true);
+                // Receive opponent's final scores
+                const opponentFinalScore = data.finalMyScore;
+                const myFinalScore = data.finalOpponentScore;
+                
+                // Determine winner based on opponent's reported scores
+                // (their "my score" is our "opponent score" and vice versa)
+                if (myFinalScore > opponentFinalScore) {
+                  setWinner('you');
+                } else if (opponentFinalScore > myFinalScore) {
+                  setWinner('opponent');
+                } else {
+                  setWinner('tie');
                 }
-                break;
+                
+                // Update scores to match
+                setMyScore(myFinalScore);
+                setOpponentScore(opponentFinalScore);
+                setGameEnded(true);
+                break;      
               case 'return-to-setup':
                 setGameState('setup');
                 setGameEnded(false);
@@ -376,20 +383,12 @@
 
           // Check for game over condition
           useEffect(() => {
-            if (gameState === 'playing' && deckCount === 0 && myHand.length === 0 && opponentHandCount === 0) {
-              // Determine winner
-              if (myScore > opponentScore) {
-                setWinner('you');
-              } else if (opponentScore > myScore) {
-                setWinner('opponent');
-              } else {
-                setWinner('tie');
-              }
+            if (gameState === 'playing' && deckCount === 0 && myHand.length === 0 && opponentHandCount === 0 && !gameEnded) {
               setGameEnded(true);
-              sendData({ type: 'game-over', myScore, myName: playerName });
+              sendData({ type: 'game-over', finalMyScore: myScore, finalOpponentScore: opponentScore, senderName: playerName });
             }
-          }, [deckCount, myHand.length, opponentHandCount, myScore, opponentScore, gameState]);
-            
+          }, [deckCount, myHand.length, opponentHandCount, myScore, opponentScore, gameState, gameEnded]);
+                       
           const handleDragStart = (e, card, index) => setDraggedCard({ card, index });
           const handleDragOver = (e, index) => { e.preventDefault(); setDragOverIndex(index); };
           const handleDrop = (e, dropIndex) => {
@@ -497,6 +496,7 @@
     </script>
 </body>
 </html>
+
 
 
 

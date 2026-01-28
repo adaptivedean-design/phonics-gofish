@@ -498,8 +498,12 @@
                 </div>
               )}
                 {showAllCards && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg shadow-2xl p-6 max-w-6xl max-h-[90vh] overflow-y-auto">
+                <div className="absolute inset-0 z-50 flex items-center justify-end">
+                  {/* Dark overlay only on the right 2/3 */}
+                  <div className="absolute inset-0 bg-black bg-opacity-50" style={{left: '33.33%'}} onClick={() => setShowAllCards(false)}></div>
+                  
+                  {/* Modal positioned on right 2/3 with margin from preview */}
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" style={{width: '66.66%', marginLeft: '38px'}}>
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-2xl font-bold">Your Hand - Organize Your Cards</h2>
                       <button 
@@ -509,7 +513,7 @@
                         Close
                       </button>
                     </div>
-                    <div className="grid grid-cols-5 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                       {myHand.map((card, i) => (
                         <div 
                           key={card.id} 
@@ -587,7 +591,7 @@
               <div className="flex-1 p-4 flex items-end justify-center relative">
                 {/* Left side - Enlarged card preview (absolute positioned) */}
                 {selectedCard && (
-                  <div className="absolute left-8 bottom-4 z-10">
+                  <div className="absolute left-8 z-10" style={{bottom: 'calc(4rem + 113px)'}}>
                     <div className="relative">
                       <img 
                         src={CARD_IMAGES[selectedCard.id]} 
@@ -655,6 +659,7 @@
     </script>
 </body>
 </html>
+
 
 
 

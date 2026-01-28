@@ -497,6 +497,36 @@
                   </div>
                 </div>
               )}
+                {showAllCards && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-w-6xl max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-2xl font-bold">Your Hand - Organize Your Cards</h2>
+                      <button 
+                        onClick={() => setShowAllCards(false)}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-5 gap-4">
+                      {myHand.map((card, i) => (
+                        <div 
+                          key={card.id} 
+                          draggable 
+                          onDragStart={(e) => handleDragStart(e, card, i)} 
+                          onDragOver={(e) => handleDragOver(e, i)} 
+                          onDrop={(e) => handleDrop(e, i)} 
+                          onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)} 
+                          className={`w-44 h-60 rounded-lg shadow-lg border-4 cursor-pointer relative ${selectedCard?.id === card.id ? 'border-yellow-400' : 'border-white'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
+                        >
+                          <img src={CARD_IMAGES[card.id]} alt={card.name} className="w-full h-full object-cover rounded-lg" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
                {gameEnded && !disconnectMessage && winner && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md text-center">
@@ -604,6 +634,7 @@
     </script>
 </body>
 </html>
+
 
 
 

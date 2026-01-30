@@ -120,7 +120,8 @@
           const [deckCount, setDeckCount] = useState(0);
           const [gameEnded, setGameEnded] = useState(false);
           const [winner, setWinner] = useState(null);
-          const [showAllCards, setShowAllCards] = useState(false);  
+          const [showAllCards, setShowAllCards] = useState(false);
+          const [showSets, setShowSets] = useState(false);
           const [disconnectMessage, setDisconnectMessage] = useState('');
           const [lastPingReceived, setLastPingReceived] = useState(Date.now());
           const [isMyTurnToPing, setIsMyTurnToPing] = useState(false);
@@ -543,6 +544,73 @@
                   </div>
                 </div>
               )}
+              {showSets && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-w-6xl max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold">Completed Sets</h2>
+                      <button 
+                        onClick={() => setShowSets(false)}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    
+                    {/* Player's Sets */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4 text-blue-600">{playerName}'s Sets ({myScore})</h3>
+                      {mySets.length === 0 ? (
+                        <p className="text-gray-500 italic">No sets completed yet</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-6">
+                          {mySets.map((set, i) => (
+                            <div key={i} className="bg-blue-50 p-4 rounded-lg border-2 border-blue-300">
+                              <div className="text-sm font-semibold mb-2 text-center">{SET_NAMES[set.set]}</div>
+                              <div className="grid grid-cols-4 gap-2">
+                                {set.cards.map((card, j) => (
+                                  <img 
+                                    key={j} 
+                                    src={CARD_IMAGES[card.id]} 
+                                    alt={card.name} 
+                                    className="w-16 h-22 rounded border-2 border-blue-600 object-cover"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Opponent's Sets */}
+                    <div>
+                      <h3 className="text-xl font-semibold mb-4 text-red-600">{opponentName}'s Sets ({opponentScore})</h3>
+                      {opponentSets.length === 0 ? (
+                        <p className="text-gray-500 italic">No sets completed yet</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-6">
+                          {opponentSets.map((set, i) => (
+                            <div key={i} className="bg-red-50 p-4 rounded-lg border-2 border-red-300">
+                              <div className="text-sm font-semibold mb-2 text-center">{SET_NAMES[set.set]}</div>
+                              <div className="grid grid-cols-4 gap-2">
+                                {set.cards.map((card, j) => (
+                                  <img 
+                                    key={j} 
+                                    src={CARD_IMAGES[card.id]} 
+                                    alt={card.name} 
+                                    className="w-16 h-22 rounded border-2 border-red-600 object-cover"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
                {gameEnded && !disconnectMessage && winner && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md text-center">
@@ -598,7 +666,7 @@
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 p-4 flex items-start justify-center"><div className="flex gap-2">{Array(4).fill(0).map((_, i) => (<div key={i} className="w-20 h-28 bg-blue-500 rounded-lg shadow-lg border-4 border-blue-700" />))}</div><div className="ml-8 flex gap-2">{opponentSets.map((set, i) => (<div key={i} className="text-center"><div className="text-xs font-semibold mb-1">{SET_NAMES[set.set]}</div><div className="flex gap-1">{set.cards.map((card, j) => (<img key={j} src={CARD_IMAGES[card.id]} alt={card.name} className="w-22 h-30 rounded border-2 border-green-600 object-cover" />))}</div></div>))}</div></div>
+                <div className="flex-1 p-4 flex items-start justify-center"><div className="flex gap-2">{Array(4).fill(0).map((_, i) => (<div key={i} className="w-20 h-28 bg-blue-500 rounded-lg shadow-lg border-4 border-blue-700" />))}</div></div>
               <div className="flex justify-center items-center py-4"><div className="text-center"><button onClick={drawCard} disabled={!isMyTurn || deckCount === 0} className={`w-24 h-32 rounded-lg shadow-xl border-4 font-bold text-white text-xl ${deckCount > 0 ? 'bg-purple-600 border-purple-800 hover:bg-purple-700' : 'bg-gray-400 border-gray-600'} ${!isMyTurn || deckCount === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>{deckCount}</button><div className="text-sm mt-2 font-semibold">Deck</div></div>{settings.endTurnMode === 'manual-end' && (<button onClick={endTurn} disabled={!isMyTurn} className={`ml-8 px-6 py-3 rounded-lg font-semibold ${isMyTurn ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>End Turn</button>)}</div>
               <div className="flex-1 p-4 flex items-end justify-center relative">
                 {/* Left side - Enlarged card preview (absolute positioned) */}
@@ -620,31 +688,23 @@
                     </div>
                   </div>
                 )}
-                
-                {/* Right side - Completed sets (absolute positioned, temporarily keeping old layout) */}
-                <div className="absolute right-8 bottom-4 flex flex-col gap-2 z-10">
-                  {mySets.map((set, i) => (
-                    <div key={i} className="text-center bg-white bg-opacity-90 p-2 rounded-lg shadow-lg">
-                      <div className="text-xs font-semibold mb-1">{SET_NAMES[set.set]}</div>
-                      <div className="flex gap-1">
-                        {set.cards.map((card, j) => (
-                          <img key={j} src={CARD_IMAGES[card.id]} alt={card.name} className="w-22 h-30 rounded border-2 border-green-600 object-cover" />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
+                                
                 {/* Center - Player's hand with scrollable container */}
                 <div className="flex flex-col items-center gap-2 max-w-4xl">
-                  {/* View All Button */}
-                  <button 
-                    onClick={() => setShowAllCards(!showAllCards)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 shadow"
-                  >
-                    {showAllCards ? 'Close Hand View' : 'View All Cards'}
-                  </button>
-                  
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setShowAllCards(!showAllCards)}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 shadow"
+                    >
+                      {showAllCards ? 'Close Hand View' : 'View All Cards'}
+                    </button>
+                    <button 
+                      onClick={() => setShowSets(!showSets)}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 shadow"
+                    >
+                      View Sets ({myScore + opponentScore})
+                    </button>
+                  </div>                 
                   {/* Scrollable hand */}
                   <div className="overflow-x-auto flex gap-2 px-4 max-w-full" style={{maxWidth: '800px'}}>
                     {myHand.map((card, i) => (
@@ -672,6 +732,7 @@
     </script>
 </body>
 </html>
+
 
 
 

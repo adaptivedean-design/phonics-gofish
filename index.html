@@ -679,7 +679,7 @@
               <div className="flex-1 p-4 flex items-end justify-center relative">
                 {/* Left side - Enlarged card preview (absolute positioned) */}
                 {selectedCard && (
-                  <div className="absolute left-8 z-10" style={{bottom: 'calc(4rem + 56px)'}}>
+                  <div className="absolute left-8" style={{bottom: 'calc(4rem + 56px)', zIndex: showAllCards ? 60 : 10}}>  
                     <div className="relative">
                       <img 
                         src={CARD_IMAGES[selectedCard.id]} 
@@ -740,6 +740,7 @@
     </script>
 </body>
 </html>
+
 
 
 

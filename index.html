@@ -218,12 +218,19 @@
           };
 
           const connectToOpponent = () => {
+            console.log('connectToOpponent called, playerName:', playerName, 'opponentPeerId:', opponentPeerId);
+            console.log('peerRef.current:', peerRef.current);
             if (!playerName.trim()) { alert('Please enter your name'); return; }
-            if (!opponentPeerId) { alert('Invalid connection'); return; }
+            if (!opponentPeerId) { alert('Invalid connection - no opponent ID'); return; }
+            if (!peerRef.current) { alert('Peer not initialized'); return; }
+            
+            console.log('Attempting to connect to:', opponentPeerId);
             const conn = peerRef.current.connect(opponentPeerId);
+            console.log('Connection object created:', conn);
             connRef.current = conn;
+            
             conn.on('open', () => { 
-              console.log('Guest connected, sending name:', playerName);
+              console.log('Connection opened! Guest connected, sending name:', playerName);
               setConnected(true); 
               conn.send({ type: 'player-info', name: playerName });
             });
@@ -236,8 +243,9 @@
             });
             conn.on('error', (err) => {
               console.error('Connection error:', err);
+              alert('Failed to connect: ' + err.type);
             });
-          };
+          };  
 
           const sendData = (data) => { if (connRef.current?.open) connRef.current.send(data); };
 
@@ -827,6 +835,7 @@
     </script>
 </body>
 </html>
+
 
 
 

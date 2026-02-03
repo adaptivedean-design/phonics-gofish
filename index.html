@@ -508,11 +508,11 @@
               )}
                 {showAllCards && (
                 <div className="absolute inset-0 z-50 flex items-center justify-end">
-                  {/* Dark overlay only on the right 2/3 */}
-                  <div className="absolute inset-0 bg-black bg-opacity-50" style={{left: '33.33%'}} onClick={() => setShowAllCards(false)}></div>
+                  {/* Dark overlay - click anywhere to close */}
+                  <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAllCards(false)}></div>  
                   
                   {/* Modal positioned on right 2/3 with margin from preview */}
-                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" style={{width: '66.66%', marginLeft: '38px'}} onDragOver={(e) => {
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" style={{width: '66.66%', marginLeft: '38px'}} onClick={(e) => e.stopPropagation()} onDragOver={(e) => {  
                     e.preventDefault();
                     const container = e.currentTarget;
                     const rect = container.getBoundingClientRect();
@@ -740,6 +740,7 @@
     </script>
 </body>
 </html>
+
 
 
 

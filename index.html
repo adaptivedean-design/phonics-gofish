@@ -152,15 +152,50 @@
           const initializePeer = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const joinId = urlParams.get('join');
+            console.log('initializePeer - joinId from URL:', joinId);
+            
+            // PeerJS configuration with public server
+            const peerConfig = {
+              host: '0.peerjs.com',
+              port: 443,
+              path: '/',
+              secure: true,
+              config: {
+                iceServers: [
+                  { urls: 'stun:stun.l.google.com:19302' },
+                  { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+              }
+            };
+            
             if (joinId) {
-              const peer = new window.Peer();
+              const peer = new window.Peer(peerConfig);
               peerRef.current = peer;
-              peer.on('open', (id) => { setMyPeerId(id); setOpponentPeerId(joinId); setIsHost(false); isHostRef.current = false; });  
+              peer.on('open', (id) => { 
+                console.log('Opponent peer opened, myPeerId:', id, 'opponentPeerId:', joinId);
+                setMyPeerId(id); 
+                setOpponentPeerId(joinId); 
+                setIsHost(false); 
+                isHostRef.current = false; 
+              });
+              peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                alert('Connection error: ' + err.type);
+              });
             } else {
-              const peer = new window.Peer();
+              const peer = new window.Peer(peerConfig);
               peerRef.current = peer;
-              peer.on('open', (id) => { setMyPeerId(id); setIsHost(true); isHostRef.current = true; });  
+              peer.on('open', (id) => { 
+                console.log('Host peer opened, myPeerId:', id);
+                setMyPeerId(id); 
+                setIsHost(true); 
+                isHostRef.current = true; 
+              });
               peer.on('connection', (conn) => setupConnection(conn));
+              peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                alert('Connection error: ' + err.type);
+              });
             }
           };
 
@@ -792,6 +827,7 @@
     </script>
 </body>
 </html>
+
 
 
 

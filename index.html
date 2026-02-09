@@ -191,7 +191,10 @@
                 setIsHost(true); 
                 isHostRef.current = true; 
               });
-              peer.on('connection', (conn) => setupConnection(conn));
+              peer.on('connection', (conn) => {
+                console.log('Host received connection attempt from:', conn.peer);
+                setupConnection(conn);
+              });  
               peer.on('error', (err) => {
                 console.error('Peer error:', err);
                 alert('Connection error: ' + err.type);
@@ -200,9 +203,10 @@
           };
 
           const setupConnection = (conn) => {
+            console.log('setupConnection called! Incoming connection from:', conn.peer);
             connRef.current = conn;
             conn.on('open', () => {
-              console.log('Connection opened');
+              console.log('Connection opened with:', conn.peer);
               setConnected(true);
             });
             conn.on('data', (data) => handleIncomingData(data));
@@ -835,6 +839,7 @@
     </script>
 </body>
 </html>
+
 
 
 

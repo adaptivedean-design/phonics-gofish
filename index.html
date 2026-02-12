@@ -601,7 +601,7 @@
               )}
               {showSets && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg shadow-2xl p-6 max-w-6xl max-h-[90vh] overflow-y-auto">
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-w-7xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold">Completed Sets</h2>
                       <button 
@@ -618,16 +618,21 @@
                       {mySets.length === 0 ? (
                         <p className="text-gray-500 italic">No sets completed yet</p>
                       ) : (
-                        <div className="grid grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 gap-8">
                           {mySets.map((set, i) => (
-                            <div key={i} className="bg-blue-50 p-4 rounded-lg border-2 border-blue-300">
-                              <div className="grid grid-cols-4 gap-2">
+                            <div key={i} className="bg-blue-50 p-6 rounded-lg border-2 border-blue-300">
+                              <div className="relative flex justify-center items-center" style={{height: '140px'}}>
                                 {set.cards.map((card, j) => (
                                   <img 
                                     key={j} 
                                     src={CARD_IMAGES[card.id]} 
                                     alt={card.name} 
-                                    className="w-27 h-38 rounded border-2 border-blue-600 object-cover"  
+                                    className="absolute w-68 h-95 rounded-lg border-3 border-blue-600 object-cover shadow-xl transition-transform hover:scale-105 hover:z-10"
+                                    style={{
+                                      left: `${30 + j * 25}%`,
+                                      transform: `translateX(-50%) rotate(${(j - 1.5) * 5}deg)`,
+                                      zIndex: j
+                                    }}
                                   />
                                 ))}
                               </div>
@@ -643,16 +648,21 @@
                       {opponentSets.length === 0 ? (
                         <p className="text-gray-500 italic">No sets completed yet</p>
                       ) : (
-                        <div className="grid grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 gap-8">
                           {opponentSets.map((set, i) => (
-                            <div key={i} className="bg-red-50 p-4 rounded-lg border-2 border-red-300">
-                              <div className="grid grid-cols-4 gap-2">
+                            <div key={i} className="bg-red-50 p-6 rounded-lg border-2 border-red-300">
+                              <div className="relative flex justify-center items-center" style={{height: '140px'}}>
                                 {set.cards.map((card, j) => (
                                   <img 
                                     key={j} 
                                     src={CARD_IMAGES[card.id]} 
-                                    alt={card.name}
-                                    className="w-27 h-38 rounded border-2 border-red-600 object-cover"  
+                                    alt={card.name} 
+                                    className="absolute w-68 h-95 rounded-lg border-3 border-red-600 object-cover shadow-xl transition-transform hover:scale-105 hover:z-10"
+                                    style={{
+                                      left: `${30 + j * 25}%`,
+                                      transform: `translateX(-50%) rotate(${(j - 1.5) * 5}deg)`,
+                                      zIndex: j
+                                    }}
                                   />
                                 ))}
                               </div>
@@ -684,16 +694,21 @@
                         {mySets.length === 0 ? (
                           <p className="text-gray-500 italic text-sm">No sets completed</p>
                         ) : (
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-2 gap-8">
                             {mySets.map((set, i) => (
-                              <div key={i} className="bg-blue-50 p-3 rounded-lg border-2 border-blue-300">
-                                <div className="grid grid-cols-4 gap-1">
+                              <div key={i} className="bg-blue-50 p-6 rounded-lg border-2 border-blue-300">
+                                <div className="relative flex justify-center items-center" style={{height: '140px'}}>
                                   {set.cards.map((card, j) => (
                                     <img 
                                       key={j} 
                                       src={CARD_IMAGES[card.id]} 
                                       alt={card.name} 
-                                      className="w-27 h-38 rounded border-2 border-blue-600 object-cover"
+                                      className="absolute w-68 h-95 rounded-lg border-3 border-blue-600 object-cover shadow-xl"
+                                      style={{
+                                        left: `${30 + j * 25}%`,
+                                        transform: `translateX(-50%) rotate(${(j - 1.5) * 5}deg)`,
+                                        zIndex: j
+                                      }}
                                     />
                                   ))}
                                 </div>
@@ -709,16 +724,21 @@
                         {opponentSets.length === 0 ? (
                           <p className="text-gray-500 italic text-sm">No sets completed</p>
                         ) : (
-                          <div className="grid grid-cols-3 gap-4">
+                          <div className="grid grid-cols-2 gap-8">
                             {opponentSets.map((set, i) => (
-                              <div key={i} className="bg-red-50 p-3 rounded-lg border-2 border-red-300">
-                                <div className="grid grid-cols-4 gap-1">
+                              <div key={i} className="bg-red-50 p-6 rounded-lg border-2 border-red-300">
+                                <div className="relative flex justify-center items-center" style={{height: '140px'}}>
                                   {set.cards.map((card, j) => (
                                     <img 
                                       key={j} 
                                       src={CARD_IMAGES[card.id]} 
                                       alt={card.name} 
-                                      className="w-27 h-38 rounded border-2 border-red-600 object-cover"
+                                      className="absolute w-68 h-95 rounded-lg border-3 border-red-600 object-cover shadow-xl"
+                                      style={{
+                                        left: `${30 + j * 25}%`,
+                                        transform: `translateX(-50%) rotate(${(j - 1.5) * 5}deg)`,
+                                        zIndex: j
+                                      }}
                                     />
                                   ))}
                                 </div>
@@ -728,7 +748,7 @@
                         )}
                       </div>
                     </div>
-                    
+                      
                     <p className="text-gray-600 text-sm mb-4">
                       {isHost ? 'Return to setup to start a new game or change settings.' : 'Waiting for host to start a new game...'}
                     </p>
@@ -839,6 +859,7 @@
     </script>
 </body>
 </html>
+
 
 
 

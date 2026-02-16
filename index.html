@@ -589,8 +589,8 @@
                           onDragStart={(e) => handleDragStart(e, card, i)} 
                           onDragOver={(e) => handleDragOver(e, i)} 
                           onDrop={(e) => handleDrop(e, i)} 
-                          onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)} 
-                          className={`w-44 h-60 rounded-lg shadow-lg border-4 cursor-pointer relative ${selectedCard?.id === card.id ? 'border-yellow-400' : 'border-white'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
+                          onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
+                          className={`w-44 h-60 rounded-lg shadow-lg cursor-pointer relative ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}  
                         >
                           <img src={CARD_IMAGES[card.id]} alt={card.name} className="w-full h-full object-cover rounded-lg" />
                         </div>
@@ -849,8 +849,8 @@
                         onDragStart={(e) => handleDragStart(e, card, i)} 
                         onDragOver={(e) => handleDragOver(e, i)} 
                         onDrop={(e) => handleDrop(e, i)} 
-                        onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)} 
-                        className={`w-44 h-60 rounded-lg shadow-lg border-4 cursor-pointer relative flex-shrink-0 ${selectedCard?.id === card.id ? 'border-yellow-400' : 'border-white'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
+                        onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
+                        className={`w-44 h-60 rounded-lg shadow-lg cursor-pointer relative flex-shrink-0 ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}  
                       >
                         <img src={CARD_IMAGES[card.id]} alt={card.name} className="w-full h-full object-cover rounded-lg" />
                       </div>
@@ -867,6 +867,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -513,7 +513,7 @@
           if (gameState === 'setup') {
             return (
               <div className="w-full min-h-screen p-8 flex items-center justify-center" style={{background: 'linear-gradient(to bottom, #dafbe9, #c4f7e5)'}}>
-                <div className="bg-white rounded-lg shadow-xl p-12 max-w-5xl w-full" style={{margin: '3cm', borderTop: '4px solid #23879f'}}>  
+                <div className="bg-white rounded-lg p-12 max-w-5xl w-full" style={{margin: '3cm', borderTop: '4px solid #23879f'}}>  
                   <div className="text-center mb-8">
                     <img src="https://i.postimg.cc/GpmYBwxD/Adaptivelogotrans.png" alt="Adaptive Logo" className="mx-auto mb-4" style={{width: '200px'}} />
                     <h1 className="text-4xl font-bold" style={{color: '#004870'}}>Go-Fish Phonics</h1>  
@@ -538,7 +538,7 @@
                         <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><Users size={20} /><span className="font-semibold text-blue-900">Invite Opponent</span></div><div className="flex items-center gap-3"><div className="px-3 py-1 bg-white border border-gray-300 rounded text-sm">{connected && opponentName ? opponentName : 'No connection'}</div>{connected ? <span className="text-green-600 text-sm flex items-center gap-1"><Wifi size={16} /> Connected</span> : <span className="text-orange-600 text-sm flex items-center gap-1"><WifiOff size={16} /> Waiting...</span>}</div></div><p className="text-sm text-gray-700 mb-3">Share this link:</p><div className="flex gap-2"><input type="text" value={`${window.location.origin}${window.location.pathname}?join=${myPeerId}`} readOnly className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm" /><button onClick={copyInviteLink}className="px-4 py-2 text-white rounded hover:opacity-90 flex items-center gap-2" style={{backgroundColor: '#50d3df'}}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied!' : 'Copy'}</button></div></div>
                       )}
                       {!isHost && (<div className="bg-green-50 border-2 border-green-300 rounded-lg p-4"><p className="text-green-900 font-semibold mb-2">Joining game...</p><p className="text-sm text-gray-700">Click Connect</p>{connected && <p className="text-green-600 text-sm mt-2 flex items-center gap-1"><Wifi size={16} /> Connected! Waiting for host...</p>}</div>)}
-                      {isHost ? (<button onClick={startGame} disabled={!connected}className={`w-full py-3 rounded-lg font-semibold ${connected ? 'text-white hover:opacity-90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`} style={connected ? {backgroundColor: '#23879f'} : {}}>{connected ? 'Start Game' : 'Waiting for Opponent...'}</button>) : (<button onClick={connectToOpponent} disabled={false} className="w-full py-3 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700">{connected ? 'Connected - Waiting for Host...' : 'Connect to Game'}</button>)}  
+                      {isHost ? (<button onClick={startGame} disabled={!connected}className={`w-full py-3 rounded-lg font-semibold ${connected ? 'text-white hover:opacity-90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`} style={connected ? {backgroundColor: '#23879f'} : {}}>{connected ? 'Start Game' : 'Waiting for Opponent...'}</button>) : (<button onClick={connectToOpponent} disabled={false} className="w-full py-3 rounded-lg font-semibold text-white hover:opacity-90" style={{backgroundColor: '#16b7a7'}}>{connected ? 'Connected - Waiting for Host...' : 'Connect to Game'}</button>)}  
                     </div>
                   )}
                 </div>
@@ -792,7 +792,7 @@
                     <div className="text-sm font-semibold text-gray-600 mb-1">{playerName || 'Your'}'s Hand</div>
                     <div className="text-lg font-bold">{isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}</div>
                   </div>
-                </div>
+                </div> 
                 
                 {/* Top right corner - Score tracker */}
                 <div className="absolute top-4 right-4 bg-white shadow-lg rounded-lg p-3 z-20 border-2 border-gray-300">
@@ -873,6 +873,7 @@
     </script>
 </body>
 </html>
+
 
 
 

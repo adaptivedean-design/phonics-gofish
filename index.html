@@ -207,9 +207,13 @@
             console.log('Connection state:', conn.open, 'Connection id:', conn.connectionId);
             connRef.current = conn;
             conn.on('open', () => {
-              console.log('Connection opened with:', conn.peer);
+              console.log('HOST: Connection opened with:', conn.peer);
               setConnected(true);
             });
+            conn.on('error', (err) => {
+              console.error('HOST: Connection error in setupConnection:', err);
+            });
+            console.log('HOST: Event listeners attached, waiting for open event...');  
             conn.on('data', (data) => handleIncomingData(data));
             conn.on('close', () => { 
               console.log('Connection closed - opponent disconnected');
@@ -233,12 +237,16 @@
             const conn = peerRef.current.connect(opponentPeerId);
             console.log('Connection object created:', conn);
             connRef.current = conn;
-            
+
             conn.on('open', () => { 
-              console.log('Connection opened! Guest connected, sending name:', playerName);
+              console.log('OPPONENT: Connection opened! Sending name:', playerName);
               setConnected(true); 
               conn.send({ type: 'player-info', name: playerName });
             });
+            conn.on('error', (err) => {
+              console.error('OPPONENT: Connection error:', err);
+            });
+            console.log('OPPONENT: Waiting for connection to open...');  
             conn.on('data', (data) => handleIncomingData(data));
             conn.on('close', () => { 
               console.log('Connection closed - host disconnected');
@@ -874,6 +882,7 @@
     </script>
 </body>
 </html>
+
 
 
 

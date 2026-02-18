@@ -156,18 +156,16 @@
             
             // PeerJS configuration with public server
             const peerConfig = {
-              host: '0.peerjs.com',
-              port: 443,
-              path: '/',
-              secure: true,
+              debug: 3,  // Enable full debugging
               config: {
                 iceServers: [
                   { urls: 'stun:stun.l.google.com:19302' },
-                  { urls: 'stun:stun1.l.google.com:19302' }
+                  { urls: 'stun:stun1.l.google.com:19302' },
+                  { urls: 'stun:stun2.l.google.com:19302' }
                 ]
               }
             };
-            
+ 
             if (joinId) {
               const peer = new window.Peer(peerConfig);
               peerRef.current = peer;
@@ -886,6 +884,7 @@
     </script>
 </body>
 </html>
+
 
 
 

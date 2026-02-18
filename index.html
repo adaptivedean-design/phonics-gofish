@@ -206,14 +206,17 @@
             console.log('setupConnection called! Incoming connection from:', conn.peer);
             console.log('Connection state:', conn.open, 'Connection id:', conn.connectionId);
             connRef.current = conn;
+            
+            // Check if already open (race condition)
+            if (conn.open) {
+              console.log('HOST: Connection already open!');
+              setConnected(true);
+            }
+            
             conn.on('open', () => {
               console.log('HOST: Connection opened with:', conn.peer);
               setConnected(true);
             });
-            conn.on('error', (err) => {
-              console.error('HOST: Connection error in setupConnection:', err);
-            });
-            console.log('HOST: Event listeners attached, waiting for open event...');  
             conn.on('data', (data) => handleIncomingData(data));
             conn.on('close', () => { 
               console.log('Connection closed - opponent disconnected');
@@ -222,9 +225,10 @@
               setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
             });
             conn.on('error', (err) => {
-              console.error('Connection error:', err);
+              console.error('HOST: Connection error in setupConnection:', err);
             });
-          };
+            console.log('HOST: Event listeners attached, waiting for open event...');
+          };            
 
           const connectToOpponent = () => {
             console.log('connectToOpponent called, playerName:', playerName, 'opponentPeerId:', opponentPeerId);
@@ -882,6 +886,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -204,6 +204,7 @@
 
           const setupConnection = (conn) => {
             console.log('setupConnection called! Incoming connection from:', conn.peer);
+            console.log('Connection state:', conn.open, 'Connection id:', conn.connectionId);
             connRef.current = conn;
             conn.on('open', () => {
               console.log('Connection opened with:', conn.peer);
@@ -873,6 +874,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -236,11 +236,15 @@
             });
             console.log('HOST: Event listeners attached, waiting for open event...');
           };            
-
           const connectToOpponent = () => {
+            console.log('=== CONNECT BUTTON CLICKED ===');
             console.log('connectToOpponent called, playerName:', playerName, 'opponentPeerId:', opponentPeerId);
             console.log('peerRef.current:', peerRef.current);
-            if (!playerName.trim()) { alert('Please enter your name'); return; }
+            if (!playerName.trim()) { 
+              console.log('ERROR: No player name');
+              alert('Please enter your name'); 
+              return; 
+            }
             if (!opponentPeerId) { alert('Invalid connection - no opponent ID'); return; }
             if (!peerRef.current) { alert('Peer not initialized'); return; }
             
@@ -893,6 +897,7 @@
     </script>
 </body>
 </html>
+
 
 
 

@@ -159,6 +159,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const joinCode = urlParams.get('join');
             
+            const playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+            setMyPlayerId(playerId);
+            
             if (joinCode) {
               setRoomCode(joinCode);
               setIsHost(false);
@@ -169,9 +172,6 @@
               setIsHost(true);
               createRoom(newRoomCode);
             }
-            
-            const playerId = 'player_' + Math.random().toString(36).substr(2, 9);
-            setMyPlayerId(playerId);
           }, []);
 
           const generateRoomCode = () => {
@@ -228,7 +228,6 @@
                 }
               });
               
-              // Monitor guest connection status
               roomRef.current.child('guestConnected').on('value', (snapshot) => {
                 const isConnected = snapshot.val();
                 if (isConnected === false && connected) {
@@ -257,7 +256,6 @@
                 }
               });
               
-              // Monitor host connection status
               roomRef.current.child('hostConnected').on('value', (snapshot) => {
                 const isConnected = snapshot.val();
                 if (isConnected === false && connected) {
@@ -267,20 +265,26 @@
               });
             }
 
-            // Set up presence detection
             presenceRef.current = database.ref('.info/connected');
             presenceRef.current.on('value', (snapshot) => {
               if (snapshot.val()) {
-                const playerPresence = roomRef.current.child(isHost ? 'hostConnected' : 'guestConnected');
+                const playerField = isHost ? 'hostConnected' : 'guestConnected';
+                const playerPresence = roomRef.current.child(playerField);
                 playerPresence.onDisconnect().set(false);
                 playerPresence.set(true);
               }
             });
 
-            // Listen for game data changes
             gameDataRef.current = database.ref(`games/${roomCode}`);
             gameDataRef.current.on('value', handleGameDataChange);
           };
+
+          // Auto-connect when room is ready and player has entered name
+          useEffect(() => {
+            if (roomRef.current && playerName.trim() && !connected && myPlayerId) {
+              connectToRoom();
+            }
+          }, [playerName, roomRef.current, myPlayerId]);
 
           const handleGameDataChange = (snapshot) => {
             const data = snapshot.val();
@@ -733,10 +737,10 @@
                     {!isHost && (
                       <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
                         <p className="text-green-900 font-semibold mb-2">Joining game...</p>
-                        <p className="text-sm text-gray-700">Click Connect</p>
+                        <p className="text-sm text-gray-700 mb-2">Enter your name above to connect</p>
                         {connected && (
                           <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
-                            <Wifi size={16} /> Connected! Waiting for host...
+                            <Wifi size={16} /> Connected! Waiting for host to start game...
                           </p>
                         )}
                       </div>
@@ -751,13 +755,9 @@
                         {connected ? 'Start Game' : 'Waiting for Opponent...'}
                       </button>
                     ) : (
-                      <button 
-                        onClick={connectToRoom} 
-                        className="w-full py-3 rounded-lg font-semibold text-white hover:opacity-90" 
-                        style={{backgroundColor: '#16b7a7'}}
-                      >
-                        {connected ? 'Connected - Waiting for Host...' : 'Connect to Game'}
-                      </button>
+                      <div className="w-full py-3 text-center text-gray-600 font-semibold">
+                        {connected ? 'Connected - Waiting for host to start game...' : 'Enter your name to connect'}
+                      </div>
                     )}
                   </div>
                 </div>

@@ -8,12 +8,30 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
+
+        // Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyAy6Qm0jlUeHad9PxHZfsh7Zz9tiLlVSMk",
+          authDomain: "go-fish-2afec.firebaseapp.com",
+          databaseURL: "https://go-fish-2afec-default-rtdb.firebaseio.com",
+          projectId: "go-fish-2afec",
+          storageBucket: "go-fish-2afec.firebasestorage.app",
+          messagingSenderId: "489979746272",
+          appId: "1:489979746272:web:4997e46c296f79f2117d85"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
 
         const CARD_SETS = {
           'short-a': ['apple', 'ant', 'bag', 'crab'],
@@ -94,8 +112,7 @@
 
         const GoFishPhonics = () => {
           const [gameState, setGameState] = useState('setup');
-          const [myPeerId, setMyPeerId] = useState('');
-          const [opponentPeerId, setOpponentPeerId] = useState('');
+          const [roomCode, setRoomCode] = useState('');
           const [playerName, setPlayerName] = useState('');
           const [opponentName, setOpponentName] = useState('');
           const [settings, setSettings] = useState({
@@ -123,12 +140,11 @@
           const [showAllCards, setShowAllCards] = useState(false);
           const [showSets, setShowSets] = useState(false);
           const [disconnectMessage, setDisconnectMessage] = useState('');
-          const [lastPingReceived, setLastPingReceived] = useState(Date.now());
-          const [isMyTurnToPing, setIsMyTurnToPing] = useState(false);
-          const peerRef = useRef(null);
-          const connRef = useRef(null);
-          const deckRef = useRef([]);
-          const isHostRef = useRef(false);  
+          const [myPlayerId, setMyPlayerId] = useState('');
+          
+          const roomRef = useRef(null);
+          const gameDataRef = useRef(null);
+          const presenceRef = useRef(null);
 
           // Preload all card images
           useEffect(() => {
@@ -138,441 +154,619 @@
             });
           }, []);
 
+          // Initialize room on mount
           useEffect(() => {
-            if (window.Peer) initializePeer();  
-            else {
-              const checkPeer = setInterval(() => {
-                if (window.Peer) { clearInterval(checkPeer); initializePeer(); }
-              }, 100);
-              setTimeout(() => { clearInterval(checkPeer); if (!window.Peer) alert('Failed to load networking library.'); }, 5000);
+            const urlParams = new URLSearchParams(window.location.search);
+            const joinCode = urlParams.get('join');
+            
+            if (joinCode) {
+              setRoomCode(joinCode);
+              setIsHost(false);
+              checkRoomExists(joinCode);
+            } else {
+              const newRoomCode = generateRoomCode();
+              setRoomCode(newRoomCode);
+              setIsHost(true);
+              createRoom(newRoomCode);
             }
-            return () => { if (peerRef.current) peerRef.current.destroy(); };
+            
+            const playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+            setMyPlayerId(playerId);
           }, []);
 
-          const initializePeer = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const joinId = urlParams.get('join');
-            console.log('initializePeer - joinId from URL:', joinId);
-            
-            // PeerJS configuration with public server
-            const peerConfig = {
-              debug: 3,
-              config: {
-                iceServers: [
-                  { urls: 'stun:stun.l.google.com:19302' },
-                  { urls: 'stun:stun1.l.google.com:19302' },
-                  {
-                    urls: 'turn:openrelay.metered.ca:80',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                  },
-                  {
-                    urls: 'turn:openrelay.metered.ca:443',
-                    username: 'openrelayproject',
-                    credential: 'openrelayproject'
-                  }
-                ]
-                // Removed iceTransportPolicy: 'relay' to allow direct connections
-              }
-            };              
- 
-            if (joinId) {
-              const peer = new window.Peer(peerConfig);
-              peerRef.current = peer;
-              peer.on('open', (id) => { 
-                console.log('Opponent peer opened, myPeerId:', id, 'opponentPeerId:', joinId);
-                setMyPeerId(id); 
-                setOpponentPeerId(joinId); 
-                setIsHost(false); 
-                isHostRef.current = false; 
+          const generateRoomCode = () => {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+          };
+
+          const createRoom = (code) => {
+            roomRef.current = database.ref(`rooms/${code}`);
+            roomRef.current.set({
+              host: '',
+              guest: '',
+              hostConnected: false,
+              guestConnected: false,
+              hostName: '',
+              guestName: '',
+              createdAt: Date.now()
+            });
+          };
+
+          const checkRoomExists = async (code) => {
+            const snapshot = await database.ref(`rooms/${code}`).once('value');
+            if (!snapshot.exists()) {
+              alert('Room does not exist. Please check the link.');
+              window.location.href = window.location.origin + window.location.pathname;
+            } else {
+              roomRef.current = database.ref(`rooms/${code}`);
+            }
+          };
+
+          const connectToRoom = () => {
+            if (!playerName.trim()) {
+              alert('Please enter your name');
+              return;
+            }
+
+            if (isHost) {
+              roomRef.current.update({
+                host: myPlayerId,
+                hostConnected: true,
+                hostName: playerName
               });
-              peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                alert('Connection error: ' + err.type);
+              
+              roomRef.current.child('guest').on('value', (snapshot) => {
+                const guestId = snapshot.val();
+                if (guestId) {
+                  setConnected(true);
+                }
+              });
+              
+              roomRef.current.child('guestName').on('value', (snapshot) => {
+                const name = snapshot.val();
+                if (name) {
+                  setOpponentName(name);
+                }
+              });
+              
+              // Monitor guest connection status
+              roomRef.current.child('guestConnected').on('value', (snapshot) => {
+                const isConnected = snapshot.val();
+                if (isConnected === false && connected) {
+                  setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended.`);
+                  setGameEnded(true);
+                }
               });
             } else {
-              const peer = new window.Peer(peerConfig);
-              peerRef.current = peer;
-              peer.on('open', (id) => { 
-                console.log('Host peer opened, myPeerId:', id);
-                setMyPeerId(id); 
-                setIsHost(true); 
-                isHostRef.current = true; 
+              roomRef.current.update({
+                guest: myPlayerId,
+                guestConnected: true,
+                guestName: playerName
               });
-              peer.on('connection', (conn) => {
-                console.log('Host received connection attempt from:', conn.peer);
-                setupConnection(conn);
-              });  
-              peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                alert('Connection error: ' + err.type);
+              
+              roomRef.current.child('host').on('value', (snapshot) => {
+                const hostId = snapshot.val();
+                if (hostId) {
+                  setConnected(true);
+                }
+              });
+              
+              roomRef.current.child('hostName').on('value', (snapshot) => {
+                const name = snapshot.val();
+                if (name) {
+                  setOpponentName(name);
+                }
+              });
+              
+              // Monitor host connection status
+              roomRef.current.child('hostConnected').on('value', (snapshot) => {
+                const isConnected = snapshot.val();
+                if (isConnected === false && connected) {
+                  setDisconnectMessage(`${opponentName || 'The host'} has disconnected. The game has ended.`);
+                  setGameEnded(true);
+                }
               });
             }
+
+            // Set up presence detection
+            presenceRef.current = database.ref('.info/connected');
+            presenceRef.current.on('value', (snapshot) => {
+              if (snapshot.val()) {
+                const playerPresence = roomRef.current.child(isHost ? 'hostConnected' : 'guestConnected');
+                playerPresence.onDisconnect().set(false);
+                playerPresence.set(true);
+              }
+            });
+
+            // Listen for game data changes
+            gameDataRef.current = database.ref(`games/${roomCode}`);
+            gameDataRef.current.on('value', handleGameDataChange);
           };
 
-          const setupConnection = (conn) => {
-            console.log('setupConnection called! Incoming connection from:', conn.peer);
-            console.log('Connection state:', conn.open, 'Connection id:', conn.connectionId);
-            connRef.current = conn;
-            
-            // Check if already open (race condition)
-            if (conn.open) {
-              console.log('HOST: Connection already open!');
-              setConnected(true);
+          const handleGameDataChange = (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            const myRole = isHost ? 'host' : 'guest';
+            const opponentRole = isHost ? 'guest' : 'host';
+
+            if (data.gameState === 'playing' && gameState === 'setup') {
+              setSettings(data.settings);
+              setMyHand(data[`${myRole}Hand`] || []);
+              setOpponentHandCount(data[`${opponentRole}HandCount`] || 0);
+              setDeckCount(data.deckCount || 0);
+              setIsMyTurn(data.currentTurn === myRole);
+              setGameState('playing');
             }
-            
-            conn.on('open', () => {
-              console.log('HOST: Connection opened with:', conn.peer);
-              setConnected(true);
-            });
-            conn.on('data', (data) => handleIncomingData(data));
-            conn.on('close', () => { 
-              console.log('Connection closed - opponent disconnected');
-              setConnected(false); 
-              setGameEnded(true);
-              setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
-            });
-            conn.on('error', (err) => {
-              console.error('HOST: Connection error in setupConnection:', err);
-            });
-            console.log('HOST: Event listeners attached, waiting for open event...');
-          };            
-          const connectToOpponent = () => {
-            console.log('=== CONNECT BUTTON CLICKED ===');
-            console.log('connectToOpponent called, playerName:', playerName, 'opponentPeerId:', opponentPeerId);
-            console.log('peerRef.current:', peerRef.current);
-            if (!playerName.trim()) { 
-              console.log('ERROR: No player name');
-              alert('Please enter your name'); 
-              return; 
+
+            if (data.gameState === 'playing') {
+              setMyHand(data[`${myRole}Hand`] || myHand);
+              setOpponentHandCount(data[`${opponentRole}HandCount`] || 0);
+              setDeckCount(data.deckCount || 0);
+              setIsMyTurn(data.currentTurn === myRole);
+              setMySets(data[`${myRole}Sets`] || []);
+              setOpponentSets(data[`${opponentRole}Sets`] || []);
+              setMyScore(data[`${myRole}Score`] || 0);
+              setOpponentScore(data[`${opponentRole}Score`] || 0);
+
+              if (data.deck && isHost) {
+                setDeck(data.deck);
+              }
             }
-            if (!opponentPeerId) { alert('Invalid connection - no opponent ID'); return; }
-            if (!peerRef.current) { alert('Peer not initialized'); return; }
-            
-            console.log('Attempting to connect to:', opponentPeerId);
-            const conn = peerRef.current.connect(opponentPeerId);
-            console.log('Connection object created:', conn);
-            connRef.current = conn;
 
-            conn.on('open', () => { 
-              console.log('OPPONENT: Connection opened! Sending name:', playerName);
-              setConnected(true); 
-              conn.send({ type: 'player-info', name: playerName });
-            });
-            conn.on('error', (err) => {
-              console.error('OPPONENT: Connection error:', err);
-            });
-            console.log('OPPONENT: Waiting for connection to open...');  
-            conn.on('data', (data) => handleIncomingData(data));
-            conn.on('close', () => { 
-              console.log('Connection closed - host disconnected');
-              setConnected(false); 
-              setGameEnded(true);
-              setDisconnectMessage(`${opponentName || 'The host'} has disconnected. The game has ended. You may close this window.`);
-            });
-            conn.on('error', (err) => {
-              console.error('Connection error:', err);
-              alert('Failed to connect: ' + err.type);
-            });
-          };  
-
-          const sendData = (data) => { if (connRef.current?.open) connRef.current.send(data); };
-
-          const handleIncomingData = (data) => {
-            console.log('Received data:', data);
-            switch (data.type) {
-              case 'player-info': 
-                console.log('Received player-info, setting opponent name to:', data.name);
-                setOpponentName(data.name);
-                if (!data.isResponse) {
-                  console.log('Sending player-info response with name:', playerName);
-                  sendData({ type: 'player-info', name: playerName, isResponse: true }); 
-                }
-                break;
-              case 'ping':
-                console.log('Received ping from opponent');
-                setLastPingReceived(Date.now());
-                sendData({ type: 'pong' });
-                break;
-              case 'pong':
-                console.log('Received pong from opponent');
-                setLastPingReceived(Date.now());
-                setIsMyTurnToPing(true);
-                break;
-             case 'start-game': 
-                setSettings(data.settings); 
-                setDeck([]); // Opponent doesn't hold the deck
-                setMyHand(data.opponentHand); 
-                setOpponentHandCount(data.playerHandCount); 
-                setDeckCount(data.deckCount); 
-                setIsMyTurn(!data.hostStarts);
-                setIsMyTurnToPing(!data.hostStarts);
-                setLastPingReceived(Date.now());
-                if (data.hostName) setOpponentName(data.hostName);
-                setGameState('playing'); 
-                break;
-              case 'card-drawn': setDeckCount(data.deckCount); setOpponentHandCount(data.handCount); setIsMyTurn(true); break;
-              case 'draw-request': 
-                console.log('Host received draw-request, isHostRef:', isHostRef.current, 'deckRef.length:', deckRef.current.length);
-                if (isHostRef.current && deckRef.current.length > 0) {
-                  const newDeck = [...deckRef.current];
-                  const drawnCard = newDeck.pop();
-                  console.log('Host dealing card to opponent:', drawnCard);
-                  setDeck(newDeck);
-                  deckRef.current = newDeck;
-                  setDeckCount(newDeck.length);
-                  setOpponentHandCount(opponentHandCount + 1);
-                  sendData({ type: 'card-dealt', card: drawnCard, deckCount: newDeck.length });
-                } else if (isHostRef.current && deckRef.current.length === 0) {
-                  console.log('Deck is empty, notifying opponent');
-                  sendData({ type: 'deck-empty' });
-                } else {
-                  console.log('NOT handling draw-request - isHostRef:', isHostRef.current, 'deckRef.length:', deckRef.current.length);
-                }
-                break;            
-              case 'deck-empty':
-                if (settings.endTurnMode === 'always-draw') setIsMyTurn(false);
-                break;
-              case 'card-dealt':
-                setMyHand(prevHand => [...prevHand, data.card]);
-                setDeckCount(data.deckCount);
-                if (settings.endTurnMode === 'always-draw') {
-                  setIsMyTurn(false);
-                  sendData({ type: 'turn-ended' });
-                }
-                break;
-              case 'card-given': 
-                setMyHand(prevHand => [...prevHand, data.card]); 
-                setOpponentHandCount(data.senderHandCount); 
-                break;      
-              case 'hand-replenished': setOpponentHandCount(data.handCount); setDeckCount(data.deckCount); break;
-              case 'set-completed': 
-                setOpponentSets(prevSets => [...prevSets, data.set]); 
-                setOpponentScore(prevScore => prevScore + 1); 
-                setOpponentHandCount(data.remainingCards); 
-                break;
-              case 'turn-ended': setIsMyTurn(true); break;                   
-              case 'game-over':
-                // Receive opponent's final scores
-                const opponentFinalScore = data.finalMyScore;
-                const myFinalScore = data.finalOpponentScore;
-                
-                // Determine winner based on opponent's reported scores
-                // (their "my score" is our "opponent score" and vice versa)
-                if (myFinalScore > opponentFinalScore) {
-                  setWinner('you');
-                } else if (opponentFinalScore > myFinalScore) {
-                  setWinner('opponent');
-                } else {
-                  setWinner('tie');
-                }
-                
-                // Update scores to match
-                setMyScore(myFinalScore);
-                setOpponentScore(opponentFinalScore);
-                setGameEnded(true);
-                break;      
-              case 'return-to-setup':
-                setGameState('setup');
-                setGameEnded(false);
-                setWinner(null);
-                setMyHand([]);
-                setOpponentHandCount(0);
-                setMySets([]);
-                setOpponentSets([]);
-                setMyScore(0);
-                setOpponentScore(0);
-                setDeck([]);
-                setDeckCount(0);
-                break;
-                }
-               };
-
-          const shuffleArray = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-          const initializeDeck = () => { const cards = []; settings.selectedSets.forEach(sk => CARD_SETS[sk].forEach(c => cards.push({ id: `${sk}-${c}`, set: sk, name: c }))); return shuffleArray(cards); };
-
-          const startGame = () => {
-            if (!playerName.trim()) { alert('Please enter your name'); return; }
-            if (!connected) { alert('Waiting for opponent'); return; }
-            console.log('startGame called, isHost:', isHost);
-            sendData({ type: 'player-info', name: playerName });
-            const newDeck = initializeDeck();
-            console.log('Deck initialized with', newDeck.length, 'cards');
-            const hostHand = newDeck.slice(0, 4), guestHand = newDeck.slice(4, 8), remaining = newDeck.slice(8);
-            console.log('Host gets', hostHand.length, 'cards, guest gets', guestHand.length, 'cards, deck has', remaining.length, 'cards');
-            const hostGoesFirst = settings.firstPlayer === 'host';
-            setDeck(remaining); deckRef.current = remaining; setMyHand(hostHand); setOpponentHandCount(4); setDeckCount(remaining.length); setIsMyTurn(hostGoesFirst); setIsMyTurnToPing(hostGoesFirst); setLastPingReceived(Date.now()); setGameState('playing');  
-            sendData({ type: 'start-game', settings, deck: remaining, playerHandCount: 4, opponentHand: guestHand, deckCount: remaining.length, hostStarts: hostGoesFirst, hostName: playerName });
-          };
-            
-           // Ping system: alternating pings every 1 second
-          useEffect(() => {
-            if (gameState !== 'playing' || !connected) return;
-            
-            const pingInterval = setInterval(() => {
-              if (isMyTurnToPing) {
-                console.log('Sending ping to opponent');
-                sendData({ type: 'ping' });
-                setIsMyTurnToPing(false);
+            if (data.gameState === 'ended' && !gameEnded) {
+              const myFinalScore = data[`${myRole}Score`] || 0;
+              const opponentFinalScore = data[`${opponentRole}Score`] || 0;
+              
+              setMyScore(myFinalScore);
+              setOpponentScore(opponentFinalScore);
+              
+              if (myFinalScore > opponentFinalScore) {
+                setWinner('you');
+              } else if (opponentFinalScore > myFinalScore) {
+                setWinner('opponent');
+              } else {
+                setWinner('tie');
               }
               
-              // Check if we haven't received a ping/pong in 3 seconds
-              const timeSinceLastPing = Date.now() - lastPingReceived;
-              if (timeSinceLastPing > 3000) {
-                console.log('No response from opponent for 3 seconds - disconnected');
-                setConnected(false);
-                setGameEnded(true);
-                setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
-              }
-            }, 1000);
-            
-            return () => clearInterval(pingInterval);
-          }, [gameState, connected, isMyTurnToPing, lastPingReceived, opponentName]);
+              setGameEnded(true);
+            }
 
-          const drawCard = () => {
-            console.log('drawCard called, deckCount:', deckCount, 'isHost:', isHost);
-            if (deckCount === 0) { if (settings.endTurnMode === 'always-draw') endTurn(); return; }
-            
-            if (isHost) {
-              // Host draws directly from their deck
-              const newDeck = [...deckRef.current];
-              const drawnCard = newDeck.pop();
-              console.log('Host drawing card:', drawnCard);
-              setMyHand([...myHand, drawnCard]);
-              setDeck(newDeck);
-              deckRef.current = newDeck;                  
-              setDeckCount(newDeck.length);
-              sendData({ type: 'card-drawn', deckCount: newDeck.length, handCount: myHand.length + 1 });
+            if (data.gameState === 'setup' && gameState === 'playing') {
+              resetGame();
+            }
+          };
+
+          const shuffleArray = (arr) => {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+          };
+
+          const initializeDeck = () => {
+            const cards = [];
+            settings.selectedSets.forEach(sk => 
+              CARD_SETS[sk].forEach(c => 
+                cards.push({ id: `${sk}-${c}`, set: sk, name: c })
+              )
+            );
+            return shuffleArray(cards);
+          };
+
+          const startGame = () => {
+            if (!playerName.trim()) {
+              alert('Please enter your name');
+              return;
+            }
+            if (!connected) {
+              alert('Waiting for opponent');
+              return;
+            }
+
+            const newDeck = initializeDeck();
+            const hostHand = newDeck.slice(0, 4);
+            const guestHand = newDeck.slice(4, 8);
+            const remaining = newDeck.slice(8);
+            const hostGoesFirst = settings.firstPlayer === 'host';
+
+            gameDataRef.current.set({
+              gameState: 'playing',
+              settings: settings,
+              deck: remaining,
+              deckCount: remaining.length,
+              hostHand: hostHand,
+              guestHand: guestHand,
+              hostHandCount: 4,
+              guestHandCount: 4,
+              hostSets: [],
+              guestSets: [],
+              hostScore: 0,
+              guestScore: 0,
+              currentTurn: hostGoesFirst ? 'host' : 'guest'
+            });
+
+            setDeck(remaining);
+            setMyHand(hostHand);
+            setOpponentHandCount(4);
+            setDeckCount(remaining.length);
+            setIsMyTurn(hostGoesFirst);
+            setGameState('playing');
+          };
+
+          const drawCard = async () => {
+            if (deckCount === 0) {
               if (settings.endTurnMode === 'always-draw') endTurn();
-            } else {
-              // Opponent requests a card from host
-              console.log('Opponent requesting card from host');
-              sendData({ type: 'draw-request' });
+              return;
             }
-          };
 
-          const replenishHand = (hand) => {
-            if (deckCount === 0 || hand.length >= 4) return hand;
+            const snapshot = await gameDataRef.current.once('value');
+            const data = snapshot.val();
+            const currentDeck = data.deck || [];
             
-            if (isHost) {
-              const newDeck = [...deckRef.current], newHand = [...hand];
-              while (newHand.length < 4 && newDeck.length > 0) newHand.push(newDeck.pop());
-              setDeck(newDeck);
-              deckRef.current = newDeck;
-              setDeckCount(newDeck.length);                  
-              sendData({ type: 'hand-replenished', handCount: newHand.length, deckCount: newDeck.length });
-              return newHand;
-            } else {
-              // For opponent, request cards from host until hand is full
-              const cardsNeeded = 4 - hand.length;
-              for (let i = 0; i < cardsNeeded && deckCount > 0; i++) {
-                sendData({ type: 'draw-request' });
-              }
-              return hand; // Hand will be updated as cards arrive
+            if (currentDeck.length === 0) {
+              if (settings.endTurnMode === 'always-draw') endTurn();
+              return;
+            }
+
+            const newDeck = [...currentDeck];
+            const drawnCard = newDeck.pop();
+            const myRole = isHost ? 'host' : 'guest';
+            const newHand = [...myHand, drawnCard];
+
+            await gameDataRef.current.update({
+              deck: newDeck,
+              deckCount: newDeck.length,
+              [`${myRole}Hand`]: newHand,
+              [`${myRole}HandCount`]: newHand.length
+            });
+
+            setMyHand(newHand);
+            setDeck(newDeck);
+            setDeckCount(newDeck.length);
+
+            if (settings.endTurnMode === 'always-draw') {
+              endTurn();
             }
           };
-  
-          const giveCard = () => {
-            if (!selectedCard) return;
-            const newMyHand = myHand.filter(c => c.id !== selectedCard.id);
-            sendData({ type: 'card-given', card: selectedCard, senderHandCount: newMyHand.length });
-            setMyHand(replenishHand(newMyHand)); setSelectedCard(null);
+
+          const replenishHand = async (hand) => {
+            if (deckCount === 0 || hand.length >= 4) return hand;
+
+            const snapshot = await gameDataRef.current.once('value');
+            const data = snapshot.val();
+            const currentDeck = data.deck || [];
+            
+            const newDeck = [...currentDeck];
+            const newHand = [...hand];
+            
+            while (newHand.length < 4 && newDeck.length > 0) {
+              newHand.push(newDeck.pop());
+            }
+
+            const myRole = isHost ? 'host' : 'guest';
+            await gameDataRef.current.update({
+              deck: newDeck,
+              deckCount: newDeck.length,
+              [`${myRole}Hand`]: newHand,
+              [`${myRole}HandCount`]: newHand.length
+            });
+
+            return newHand;
           };
 
-          const endTurn = () => { setIsMyTurn(false); setSelectedCard(null); sendData({ type: 'turn-ended' }); };
-          const checkForSets = (hand) => {
-            // Check for 4 consecutive cards of the same set
+          const giveCard = async () => {
+            if (!selectedCard) return;
+
+            const snapshot = await gameDataRef.current.once('value');
+            const data = snapshot.val();
+            
+            const myRole = isHost ? 'host' : 'guest';
+            const opponentRole = isHost ? 'guest' : 'host';
+            
+            const newMyHand = myHand.filter(c => c.id !== selectedCard.id);
+            const opponentHand = data[`${opponentRole}Hand`] || [];
+            const newOpponentHand = [...opponentHand, selectedCard];
+
+            const replenishedHand = await replenishHand(newMyHand);
+
+            await gameDataRef.current.update({
+              [`${myRole}Hand`]: replenishedHand,
+              [`${myRole}HandCount`]: replenishedHand.length,
+              [`${opponentRole}Hand`]: newOpponentHand,
+              [`${opponentRole}HandCount`]: newOpponentHand.length
+            });
+
+            setMyHand(replenishedHand);
+            setSelectedCard(null);
+          };
+
+          const endTurn = async () => {
+            const opponentRole = isHost ? 'guest' : 'host';
+            await gameDataRef.current.update({
+              currentTurn: opponentRole
+            });
+            setIsMyTurn(false);
+            setSelectedCard(null);
+          };
+
+          const checkForSets = async (hand) => {
             for (let i = 0; i <= hand.length - 4; i++) {
               const fourCards = hand.slice(i, i + 4);
               const firstSet = fourCards[0].set;
               
-              // Check if all 4 consecutive cards are from the same set
               if (fourCards.every(card => card.set === firstSet)) {
-                completeSet(firstSet, hand);
+                await completeSet(firstSet, hand);
                 return true;
               }
             }
             return false;
-          };  
+          };
 
-          const completeSet = (setKey, hand) => {
+          const completeSet = async (setKey, hand) => {
             const setCards = hand.filter(c => c.set === setKey);
             const remainingCards = hand.filter(c => c.set !== setKey);
             
-            // Replenish hand immediately after completing set
-            const replenishedHand = replenishHand(remainingCards);
+            const replenishedHand = await replenishHand(remainingCards);
             
-            setMyHand(replenishedHand);
-            setMySets([...mySets, { set: setKey, cards: setCards }]);
-            setMyScore(myScore + 1);
-            sendData({ type: 'set-completed', set: { set: setKey, cards: setCards }, remainingCards: replenishedHand.length });
-          };
+            const myRole = isHost ? 'host' : 'guest';
+            const snapshot = await gameDataRef.current.once('value');
+            const data = snapshot.val();
             
-          useEffect(() => { if (myHand.length > 0) checkForSets(myHand); }, [myHand]);
+            const currentSets = data[`${myRole}Sets`] || [];
+            const newSets = [...currentSets, { set: setKey, cards: setCards }];
+            const newScore = newSets.length;
 
-          // Check for game over condition
+            await gameDataRef.current.update({
+              [`${myRole}Hand`]: replenishedHand,
+              [`${myRole}HandCount`]: replenishedHand.length,
+              [`${myRole}Sets`]: newSets,
+              [`${myRole}Score`]: newScore
+            });
+
+            setMyHand(replenishedHand);
+            setMySets(newSets);
+            setMyScore(newScore);
+          };
+
+          useEffect(() => {
+            if (myHand.length > 0 && gameState === 'playing') {
+              checkForSets(myHand);
+            }
+          }, [myHand]);
+
           useEffect(() => {
             if (gameState === 'playing' && deckCount === 0 && myHand.length === 0 && opponentHandCount === 0 && !gameEnded) {
-              setGameEnded(true);
-              sendData({ type: 'game-over', finalMyScore: myScore, finalOpponentScore: opponentScore, senderName: playerName });
+              gameDataRef.current.update({
+                gameState: 'ended'
+              });
             }
-          }, [deckCount, myHand.length, opponentHandCount, myScore, opponentScore, gameState, gameEnded]);
-                       
-          const handleDragStart = (e, card, index) => setDraggedCard({ card, index });
-          const handleDragOver = (e, index) => { e.preventDefault(); setDragOverIndex(index); };
-          const handleDrop = (e, dropIndex) => {
+          }, [deckCount, myHand.length, opponentHandCount, gameState, gameEnded]);
+
+          const handleDragStart = (e, card, index) => {
+            setDraggedCard({ card, index });
+          };
+
+          const handleDragOver = (e, index) => {
+            e.preventDefault();
+            setDragOverIndex(index);
+          };
+
+          const handleDrop = async (e, dropIndex) => {
             e.preventDefault();
             if (draggedCard === null) return;
+
             const newHand = [...myHand];
             const [removed] = newHand.splice(draggedCard.index, 1);
             newHand.splice(dropIndex, 0, removed);
-            setMyHand(newHand); setDraggedCard(null); setDragOverIndex(null);
-            sendData({ type: 'hand-reordered' });
+            
+            setMyHand(newHand);
+            setDraggedCard(null);
+            setDragOverIndex(null);
+
+            const myRole = isHost ? 'host' : 'guest';
+            await gameDataRef.current.update({
+              [`${myRole}Hand`]: newHand
+            });
           };
 
           const copyInviteLink = () => {
-            navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?join=${myPeerId}`);
-            setCopied(true); setTimeout(() => setCopied(false), 2000);
+            navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?join=${roomCode}`);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
           };
+
+          const resetGame = () => {
+            setGameState('setup');
+            setGameEnded(false);
+            setWinner(null);
+            setMyHand([]);
+            setOpponentHandCount(0);
+            setMySets([]);
+            setOpponentSets([]);
+            setMyScore(0);
+            setOpponentScore(0);
+            setDeck([]);
+            setDeckCount(0);
+          };
+
+          const returnToSetup = async () => {
+            await gameDataRef.current.update({
+              gameState: 'setup'
+            });
+            resetGame();
+          };
+
+          // Cleanup on unmount
+          useEffect(() => {
+            return () => {
+              if (roomRef.current) {
+                const playerField = isHost ? 'hostConnected' : 'guestConnected';
+                roomRef.current.update({ [playerField]: false });
+              }
+              if (gameDataRef.current) {
+                gameDataRef.current.off();
+              }
+              if (presenceRef.current) {
+                presenceRef.current.off();
+              }
+            };
+          }, []);
 
           if (gameState === 'setup') {
             return (
               <div className="w-full min-h-screen p-8 flex items-center justify-center" style={{background: 'linear-gradient(to bottom, #dafbe9, #c4f7e5)'}}>
-                <div className="bg-white rounded-lg p-12 max-w-5xl w-full" style={{margin: '3cm', borderTop: '4px solid #23879f'}}>  
+                <div className="bg-white rounded-lg p-12 max-w-5xl w-full" style={{margin: '3cm', borderTop: '4px solid #23879f'}}>
                   <div className="text-center mb-8">
                     <img src="https://i.postimg.cc/GpmYBwxD/Adaptivelogotrans.png" alt="Adaptive Logo" className="mx-auto mb-4" style={{width: '200px'}} />
-                    <h1 className="text-4xl font-bold" style={{color: '#004870'}}>Go-Fish Phonics</h1>  
-                  </div>  
-                  {!myPeerId ? (
-                    <div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div><p className="mt-4 text-gray-600">Connecting...</p></div>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label><input type="text" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Enter your name" /></div>
-                        {isHost && (
-                          <div><label className="block text-sm font-medium text-gray-700 mb-2">Turn End Mode</label><select value={settings.endTurnMode} onChange={(e) => setSettings({...settings, endTurnMode: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="always-draw">Classic Mode</option><option value="manual-end">Strategic Mode</option></select></div>
-                        )}
+                    <h1 className="text-4xl font-bold" style={{color: '#004870'}}>Go-Fish Phonics</h1>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                        <input 
+                          type="text" 
+                          value={playerName} 
+                          onChange={(e) => setPlayerName(e.target.value)} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          placeholder="Enter your name" 
+                        />
                       </div>
                       {isHost && (
-                        <div><label className="block text-sm font-medium text-gray-700 mb-2">Who Goes First?</label><select value={settings.firstPlayer} onChange={(e) => setSettings({...settings, firstPlayer: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="host">Host (You)</option><option value="opponent">Opponent</option></select></div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Turn End Mode</label>
+                          <select 
+                            value={settings.endTurnMode} 
+                            onChange={(e) => setSettings({...settings, endTurnMode: e.target.value})} 
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="always-draw">Classic Mode</option>
+                            <option value="manual-end">Strategic Mode</option>
+                          </select>
+                        </div>
                       )}
-                      {isHost && (
-                        <div><label className="block text-sm font-medium text-gray-700 mb-2"><Settings size={18} /> Select Card Sets</label><div className="bg-gray-50 p-4 rounded-lg"><div className="grid grid-cols-4 gap-3 text-sm">{Object.entries(SET_NAMES).map(([key, name]) => (<div key={key} className="flex items-center"><input type="checkbox" checked={settings.selectedSets.includes(key)} onChange={(e) => { if (e.target.checked) setSettings({...settings, selectedSets: [...settings.selectedSets, key]}); else setSettings({...settings, selectedSets: settings.selectedSets.filter(s => s !== key)}); }} className="mr-2" />{name}</div>))}</div></div></div>
-                      )}
-                      {isHost && (
-                        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><Users size={20} /><span className="font-semibold text-blue-900">Invite Opponent</span></div><div className="flex items-center gap-3"><div className="px-3 py-1 bg-white border border-gray-300 rounded text-sm">{connected && opponentName ? opponentName : 'No connection'}</div>{connected ? <span className="text-green-600 text-sm flex items-center gap-1"><Wifi size={16} /> Connected</span> : <span className="text-orange-600 text-sm flex items-center gap-1"><WifiOff size={16} /> Waiting...</span>}</div></div><p className="text-sm text-gray-700 mb-3">Share this link:</p><div className="flex gap-2"><input type="text" value={`${window.location.origin}${window.location.pathname}?join=${myPeerId}`} readOnly className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm" /><button onClick={copyInviteLink}className="px-4 py-2 text-white rounded hover:opacity-90 flex items-center gap-2" style={{backgroundColor: '#50d3df'}}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Copied!' : 'Copy'}</button></div></div>
-                      )}
-                      {!isHost && (<div className="bg-green-50 border-2 border-green-300 rounded-lg p-4"><p className="text-green-900 font-semibold mb-2">Joining game...</p><p className="text-sm text-gray-700">Click Connect</p>{connected && <p className="text-green-600 text-sm mt-2 flex items-center gap-1"><Wifi size={16} /> Connected! Waiting for host...</p>}</div>)}
-                      {isHost ? (<button onClick={startGame} disabled={!connected}className={`w-full py-3 rounded-lg font-semibold ${connected ? 'text-white hover:opacity-90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`} style={connected ? {backgroundColor: '#23879f'} : {}}>{connected ? 'Start Game' : 'Waiting for Opponent...'}</button>) : (<button onClick={connectToOpponent} disabled={false} className="w-full py-3 rounded-lg font-semibold text-white hover:opacity-90" style={{backgroundColor: '#16b7a7'}}>{connected ? 'Connected - Waiting for Host...' : 'Connect to Game'}</button>)}  
                     </div>
-                  )}
+                    {isHost && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Who Goes First?</label>
+                        <select 
+                          value={settings.firstPlayer} 
+                          onChange={(e) => setSettings({...settings, firstPlayer: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        >
+                          <option value="host">Host (You)</option>
+                          <option value="opponent">Opponent</option>
+                        </select>
+                      </div>
+                    )}
+                    {isHost && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Settings size={18} /> Select Card Sets
+                        </label>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <div className="grid grid-cols-4 gap-3 text-sm">
+                            {Object.entries(SET_NAMES).map(([key, name]) => (
+                              <div key={key} className="flex items-center">
+                                <input 
+                                  type="checkbox" 
+                                  checked={settings.selectedSets.includes(key)} 
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSettings({...settings, selectedSets: [...settings.selectedSets, key]});
+                                    } else {
+                                      setSettings({...settings, selectedSets: settings.selectedSets.filter(s => s !== key)});
+                                    }
+                                  }} 
+                                  className="mr-2" 
+                                />
+                                {name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {isHost && (
+                      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Users size={20} />
+                            <span className="font-semibold text-blue-900">Invite Opponent</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="px-3 py-1 bg-white border border-gray-300 rounded text-sm">
+                              {connected && opponentName ? opponentName : 'No connection'}
+                            </div>
+                            {connected ? (
+                              <span className="text-green-600 text-sm flex items-center gap-1">
+                                <Wifi size={16} /> Connected
+                              </span>
+                            ) : (
+                              <span className="text-orange-600 text-sm flex items-center gap-1">
+                                <WifiOff size={16} /> Waiting...
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-700 mb-3">Share this link:</p>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={`${window.location.origin}${window.location.pathname}?join=${roomCode}`} 
+                            readOnly 
+                            className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm" 
+                          />
+                          <button 
+                            onClick={copyInviteLink}
+                            className="px-4 py-2 text-white rounded hover:opacity-90 flex items-center gap-2" 
+                            style={{backgroundColor: '#50d3df'}}
+                          >
+                            {copied ? <Check size={16} /> : <Copy size={16} />}
+                            {copied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!isHost && (
+                      <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+                        <p className="text-green-900 font-semibold mb-2">Joining game...</p>
+                        <p className="text-sm text-gray-700">Click Connect</p>
+                        {connected && (
+                          <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
+                            <Wifi size={16} /> Connected! Waiting for host...
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {isHost ? (
+                      <button 
+                        onClick={startGame} 
+                        disabled={!connected}
+                        className={`w-full py-3 rounded-lg font-semibold ${connected ? 'text-white hover:opacity-90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`} 
+                        style={connected ? {backgroundColor: '#23879f'} : {}}
+                      >
+                        {connected ? 'Start Game' : 'Waiting for Opponent...'}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={connectToRoom} 
+                        className="w-full py-3 rounded-lg font-semibold text-white hover:opacity-90" 
+                        style={{backgroundColor: '#16b7a7'}}
+                      >
+                        {connected ? 'Connected - Waiting for Host...' : 'Connect to Game'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
           }
 
           return (
-            <div className="w-full h-screen bg-white flex flex-col">  
+            <div className="w-full h-screen bg-white flex flex-col">
               {gameEnded && disconnectMessage && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md text-center">
@@ -581,13 +775,10 @@
                   </div>
                 </div>
               )}
-                {showAllCards && (
+              {showAllCards && (
                 <div className="absolute inset-0 z-50 flex items-center justify-end">
-                  {/* Dark overlay - click anywhere to close */}
-                  <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAllCards(false)}></div>  
-                  
-                  {/* Modal positioned on right 2/3 with margin from preview */}
-                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" style={{width: '66.66%', marginLeft: '38px'}} onClick={(e) => e.stopPropagation()} onDragOver={(e) => {  
+                  <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAllCards(false)}></div>
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" style={{width: '66.66%', marginLeft: '38px'}} onClick={(e) => e.stopPropagation()} onDragOver={(e) => {
                     e.preventDefault();
                     const container = e.currentTarget;
                     const rect = container.getBoundingClientRect();
@@ -599,7 +790,7 @@
                     } else if (e.clientY > rect.bottom - scrollThreshold) {
                       container.scrollTop += scrollSpeed;
                     }
-                  }}>  
+                  }}>
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-2xl font-bold">Your Hand - Organize Your Cards</h2>
                       <button 
@@ -618,7 +809,7 @@
                           onDragOver={(e) => handleDragOver(e, i)} 
                           onDrop={(e) => handleDrop(e, i)} 
                           onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
-                          className={`w-44 h-60 rounded-lg shadow-lg cursor-pointer relative ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}  
+                          className={`w-44 h-60 rounded-lg shadow-lg cursor-pointer relative ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
                         >
                           <img src={CARD_IMAGES[card.id]} alt={card.name} className="w-full h-full object-cover rounded-lg" />
                         </div>
@@ -629,7 +820,7 @@
               )}
               {showSets && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSets(false)}>
-                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto" style={{width: '95vw'}} onClick={(e) => e.stopPropagation()}>  
+                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto" style={{width: '95vw'}} onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold">Completed Sets</h2>
                       <button 
@@ -639,8 +830,6 @@
                         Close
                       </button>
                     </div>
-                    
-                    {/* Player's Sets */}
                     <div className="mb-8">
                       <h3 className="text-xl font-semibold mb-4 text-blue-600">{playerName}'s Sets ({myScore})</h3>
                       {mySets.length === 0 ? (
@@ -671,8 +860,6 @@
                         </div>
                       )}
                     </div>
-                    
-                    {/* Opponent's Sets */}
                     <div>
                       <h3 className="text-xl font-semibold mb-4 text-red-600">{opponentName}'s Sets ({opponentScore})</h3>
                       {opponentSets.length === 0 ? (
@@ -706,9 +893,9 @@
                   </div>
                 </div>
               )}
-               {gameEnded && !disconnectMessage && winner && (
+              {gameEnded && !disconnectMessage && winner && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-8">
-                  <div className="bg-white rounded-lg shadow-2xl p-8 text-center my-auto" style={{width: '95vw'}}>  
+                  <div className="bg-white rounded-lg shadow-2xl p-8 text-center my-auto" style={{width: '95vw'}}>
                     <h2 className="text-3xl font-bold mb-4">
                       {winner === 'you' ? '🎉 You Win! 🎉' : winner === 'opponent' ? '😔 You Lose' : '🤝 It\'s a Tie!'}
                     </h2>
@@ -717,10 +904,7 @@
                       <p className="font-bold">{playerName}: {myScore}</p>
                       <p className="font-bold">{opponentName}: {opponentScore}</p>
                     </div>
-                    
-                    {/* Completed Sets Display */}
                     <div className="mb-6">
-                      {/* Player's Sets */}
                       <div className="mb-6">
                         <h3 className="text-lg font-semibold mb-3 text-blue-600">{playerName}'s Sets</h3>
                         {mySets.length === 0 ? (
@@ -729,20 +913,20 @@
                           <div className="grid grid-cols-2 gap-8">
                             {mySets.map((set, i) => (
                               <div key={i} className="bg-blue-50 p-6 rounded-lg border-2 border-blue-300">
-                                <div className="relative flex justify-center items-center" style={{height: '200px'}}>  
+                                <div className="relative flex justify-center items-center" style={{height: '200px'}}>
                                   {set.cards.map((card, j) => (
-                                   <img 
-                                     key={j} 
-                                     src={CARD_IMAGES[card.id]} 
-                                     alt={card.name}
-                                     className="absolute rounded-lg border-3 border-blue-600 object-cover shadow-xl transition-transform hover:scale-105 hover:z-10"
-                                     style={{
-                                       width: '117px',
-                                       height: '160px',
-                                       left: `${20 + j * 20}%`,
-                                       transform: `translateX(-50%) rotate(${(j - 1.5) * 5}deg)`,
-                                       zIndex: j
-                                     }}
+                                    <img 
+                                      key={j} 
+                                      src={CARD_IMAGES[card.id]} 
+                                      alt={card.name}
+                                      className="absolute rounded-lg border-3 border-blue-600 object-cover shadow-xl transition-transform hover:scale-105 hover:z-10"
+                                      style={{
+                                        width: '117px',
+                                        height: '160px',
+                                        left: `${20 + j * 20}%`,
+                                        transform: `translateX(-50%) rotate(${(j - 1.5) * 5}deg)`,
+                                        zIndex: j
+                                      }}
                                     />
                                   ))}
                                 </div>
@@ -751,8 +935,6 @@
                           </div>
                         )}
                       </div>
-                      
-                      {/* Opponent's Sets */}
                       <div>
                         <h3 className="text-lg font-semibold mb-3 text-red-600">{opponentName}'s Sets</h3>
                         {opponentSets.length === 0 ? (
@@ -784,25 +966,11 @@
                         )}
                       </div>
                     </div>
-                      
                     <p className="text-gray-600 text-sm mb-4">
                       {isHost ? 'Return to setup to start a new game or change settings.' : 'Waiting for host to start a new game...'}
                     </p>
                     <button 
-                      onClick={() => {
-                        setGameState('setup');
-                        setGameEnded(false);
-                        setWinner(null);
-                        setMyHand([]);
-                        setOpponentHandCount(0);
-                        setMySets([]);
-                        setOpponentSets([]);
-                        setMyScore(0);
-                        setOpponentScore(0);
-                        setDeck([]);
-                        setDeckCount(0);
-                        sendData({ type: 'return-to-setup' });
-                      }} 
+                      onClick={returnToSetup} 
                       className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
                     >
                       Return to Setup
@@ -810,41 +978,65 @@
                   </div>
                 </div>
               )}
-                {/* Top left corner - Logo and Turn indicator */}
-                <div className="absolute top-4 left-4 z-20">
-                  <img src="https://i.postimg.cc/GpmYBwxD/Adaptivelogotrans.png" alt="Adaptive Logo" className="mb-2" style={{width: '120px'}} />
-                  <div className={`bg-white shadow-lg rounded-lg p-3 ${isMyTurn ? 'animate-pulse border-2 border-yellow-400' : 'border-2 border-gray-300'}`}>
-                    <div className="text-sm font-semibold text-gray-600 mb-1">{playerName || 'Your'}'s Hand</div>
-                    <div className="text-lg font-bold">{isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}</div>
+              <div className="absolute top-4 left-4 z-20">
+                <img src="https://i.postimg.cc/GpmYBwxD/Adaptivelogotrans.png" alt="Adaptive Logo" className="mb-2" style={{width: '120px'}} />
+                <div className={`bg-white shadow-lg rounded-lg p-3 ${isMyTurn ? 'animate-pulse border-2 border-yellow-400' : 'border-2 border-gray-300'}`}>
+                  <div className="text-sm font-semibold text-gray-600 mb-1">{playerName || 'Your'}'s Hand</div>
+                  <div className="text-lg font-bold">{isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}</div>
+                </div>
+              </div>
+              <div className="absolute top-4 right-4 bg-white shadow-lg rounded-lg p-3 z-20 border-2 border-gray-300">
+                <div className="flex gap-6">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600 mb-1">{playerName}</div>
+                    <div className="text-2xl font-bold text-blue-600">{myScore}</div>
                   </div>
-                </div> 
-                
-                {/* Top right corner - Score tracker */}
-                <div className="absolute top-4 right-4 bg-white shadow-lg rounded-lg p-3 z-20 border-2 border-gray-300">
-                  <div className="flex gap-6">
-                    <div className="text-center">
-                      <div className="text-xs text-gray-600 mb-1">{playerName}</div>
-                      <div className="text-2xl font-bold text-blue-600">{myScore}</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-600 mb-1">{opponentName}</div>
-                      <div className="text-2xl font-bold text-red-600">{opponentScore}</div>
-                    </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600 mb-1">{opponentName}</div>
+                    <div className="text-2xl font-bold text-red-600">{opponentScore}</div>
                   </div>
                 </div>
-                <div className="flex-1 p-4 flex items-start justify-center"><div className="flex gap-2">{Array(4).fill(0).map((_, i) => (<div key={i} className="w-20 h-28 bg-blue-500 rounded-lg shadow-lg border-4 border-blue-700" />))}</div></div>
-              <div className="flex justify-center items-center py-4"><div className="text-center"><button onClick={drawCard} disabled={!isMyTurn || deckCount === 0}className={`w-24 h-32 rounded-lg shadow-xl border-4 font-bold text-white text-xl ${!isMyTurn || deckCount === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} style={deckCount > 0 ? {backgroundColor: '#23879f', borderColor: '#004870'} : {backgroundColor: '#b0b0b0', borderColor: '#808080'}}>{isHost ? deckCount : ''}</button><div className="text-sm mt-2 font-semibold">Deck</div></div>{settings.endTurnMode === 'manual-end' && (<button onClick={endTurn} disabled={!isMyTurn} className={`ml-8 px-6 py-3 rounded-lg font-semibold ${isMyTurn ? 'text-white hover:opacity-90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`} style={isMyTurn ? {backgroundColor: '#50d3df'} : {}}>End Turn</button>)}</div>
+              </div>
+              <div className="flex-1 p-4 flex items-start justify-center">
+                <div className="flex gap-2">
+                  {Array(4).fill(0).map((_, i) => (
+                    <div key={i} className="w-20 h-28 bg-blue-500 rounded-lg shadow-lg border-4 border-blue-700" />
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-center items-center py-4">
+                <div className="text-center">
+                  <button 
+                    onClick={drawCard} 
+                    disabled={!isMyTurn || deckCount === 0}
+                    className={`w-24 h-32 rounded-lg shadow-xl border-4 font-bold text-white text-xl ${!isMyTurn || deckCount === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} 
+                    style={deckCount > 0 ? {backgroundColor: '#23879f', borderColor: '#004870'} : {backgroundColor: '#b0b0b0', borderColor: '#808080'}}
+                  >
+                    {isHost ? deckCount : ''}
+                  </button>
+                  <div className="text-sm mt-2 font-semibold">Deck</div>
+                </div>
+                {settings.endTurnMode === 'manual-end' && (
+                  <button 
+                    onClick={endTurn} 
+                    disabled={!isMyTurn} 
+                    className={`ml-8 px-6 py-3 rounded-lg font-semibold ${isMyTurn ? 'text-white hover:opacity-90' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`} 
+                    style={isMyTurn ? {backgroundColor: '#50d3df'} : {}}
+                  >
+                    End Turn
+                  </button>
+                )}
+              </div>
               <div className="flex-1 p-4 flex items-end justify-center relative">
-                {/* Left side - Enlarged card preview (absolute positioned) */}
                 {selectedCard && (
-                  <div className="absolute left-8" style={{bottom: 'calc(4rem + 56px)', zIndex: showAllCards ? 60 : 10}}>  
+                  <div className="absolute left-8" style={{bottom: 'calc(4rem + 56px)', zIndex: showAllCards ? 60 : 10}}>
                     <div className="relative">
                       <img 
                         src={CARD_IMAGES[selectedCard.id]} 
                         alt={selectedCard.name} 
                         className="rounded-lg shadow-2xl border-4 border-yellow-400"
                         style={{width: '335px', height: '430px'}}
-                      />                        
+                      />
                       <button 
                         onClick={(e) => { e.stopPropagation(); giveCard(); }} 
                         className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-500 text-white rounded-full p-3 hover:bg-red-600 shadow-lg"
@@ -854,8 +1046,6 @@
                     </div>
                   </div>
                 )}
-                                
-                {/* Center - Player's hand with scrollable container */}
                 <div className="flex flex-col items-center gap-2 max-w-4xl">
                   <div className="flex gap-2">
                     <button 
@@ -870,8 +1060,7 @@
                     >
                       View Sets ({myScore + opponentScore})
                     </button>
-                  </div>                 
-                  {/* Scrollable hand */}
+                  </div>
                   <div className="overflow-x-auto flex gap-2 px-4 max-w-full" style={{maxWidth: '800px'}}>
                     {myHand.map((card, i) => (
                       <div 
@@ -881,7 +1070,7 @@
                         onDragOver={(e) => handleDragOver(e, i)} 
                         onDrop={(e) => handleDrop(e, i)} 
                         onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
-                        className={`w-44 h-60 rounded-lg shadow-lg cursor-pointer relative flex-shrink-0 ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}  
+                        className={`w-44 h-60 rounded-lg shadow-lg cursor-pointer relative flex-shrink-0 ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
                       >
                         <img src={CARD_IMAGES[card.id]} alt={card.name} className="w-full h-full object-cover rounded-lg" />
                       </div>
@@ -893,75 +1082,7 @@
           );
         };
 
-        ReactDOM.render(<GoFishPhonics />, document.getElementById('root'));    
-
+        ReactDOM.render(<GoFishPhonics />, document.getElementById('root'));
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

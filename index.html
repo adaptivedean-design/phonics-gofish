@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go-Fish Phonics</title>
+    <title>Go-Fish Phonics v2</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -978,8 +978,8 @@
                   </div>
                 </div>
               )}
-              <div className="absolute top-4 left-4 z-20">
-                <img src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Adaptive Logo" className="mb-2" style={{width: '120px'}} />
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-4">
+                <img src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Adaptive Logo" style={{width: '120px'}} />
                 <div className={`bg-white shadow-lg rounded-lg p-3 ${isMyTurn ? 'animate-pulse border-2 border-yellow-400' : 'border-2 border-gray-300'}`}>
                   <div className="text-sm font-semibold text-gray-600 mb-1">{playerName || 'Your'}'s Hand</div>
                   <div className="text-lg font-bold">{isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}</div>

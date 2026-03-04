@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go-Fish Phonics v2</title>
+    <title>Go-Fish Phonics</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -231,7 +231,7 @@
               roomRef.current.child('guestConnected').on('value', (snapshot) => {
                 const isConnected = snapshot.val();
                 if (isConnected === false && connected) {
-                  setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended.`);
+                  setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
                   setGameEnded(true);
                 }
               });
@@ -259,7 +259,7 @@
               roomRef.current.child('hostConnected').on('value', (snapshot) => {
                 const isConnected = snapshot.val();
                 if (isConnected === false && connected) {
-                  setDisconnectMessage(`${opponentName || 'The host'} has disconnected. The game has ended.`);
+                  setDisconnectMessage(`${opponentName || 'The host'} has disconnected. The game has ended. You may close this window.`);
                   setGameEnded(true);
                 }
               });
@@ -768,10 +768,10 @@
           return (
             <div className="w-full h-screen bg-white flex flex-col">
               {gameEnded && disconnectMessage && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md text-center">
-                    <h2 className="text-2xl font-bold text-red-600 mb-4">Game Ended</h2>
-                    <p className="text-gray-700 mb-6">{disconnectMessage}</p>
+                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl shadow-2xl p-10 max-w-lg text-center border-4 border-red-500">
+                    <h2 className="text-3xl font-bold text-red-600 mb-6">Game Ended</h2>
+                    <p className="text-gray-800 text-lg mb-2">{disconnectMessage}</p>
                   </div>
                 </div>
               )}

@@ -602,12 +602,35 @@
             resetGame();
           };
 
-          // Cleanup on unmount
+          // Cleanup on unmount and window close
           useEffect(() => {
-            return () => {
+            const handleBeforeUnload = () => {
               if (roomRef.current) {
                 const playerField = isHost ? 'hostConnected' : 'guestConnected';
                 roomRef.current.update({ [playerField]: false });
+                
+                // If host, delete the entire game
+                if (isHost && gameDataRef.current) {
+                  gameDataRef.current.remove();
+                  roomRef.current.remove();
+                }
+              }
+            };
+
+            window.addEventListener('beforeunload', handleBeforeUnload);
+
+            return () => {
+              window.removeEventListener('beforeunload', handleBeforeUnload);
+              
+              if (roomRef.current) {
+                const playerField = isHost ? 'hostConnected' : 'guestConnected';
+                roomRef.current.update({ [playerField]: false });
+                
+                // If host, delete the entire game
+                if (isHost && gameDataRef.current) {
+                  gameDataRef.current.remove();
+                  roomRef.current.remove();
+                }
               }
               if (gameDataRef.current) {
                 gameDataRef.current.off();
@@ -616,7 +639,7 @@
                 presenceRef.current.off();
               }
             };
-          }, []);
+          }, [isHost]);
 
           if (gameState === 'setup') {
             return (

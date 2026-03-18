@@ -141,7 +141,6 @@
           const [showSets, setShowSets] = useState(false);
           const [disconnectMessage, setDisconnectMessage] = useState('');
           const [myPlayerId, setMyPlayerId] = useState('');
-          const [lastPingReceived, setLastPingReceived] = useState(Date.now());
           
           const roomRef = useRef(null);
           const gameDataRef = useRef(null);
@@ -300,7 +299,6 @@
               setOpponentHandCount(data[`${opponentRole}HandCount`] || 0);
               setDeckCount(data.deckCount || 0);
               setIsMyTurn(data.currentTurn === myRole);
-              setLastPingReceived(Date.now());
               setGameState('playing');
             }
 
@@ -316,12 +314,6 @@
 
               if (data.deck && isHost) {
                 setDeck(data.deck);
-              }
-              
-              // Update last ping received from opponent
-              const opponentPingTime = data[`${opponentRole}LastPing`];
-              if (opponentPingTime) {
-                setLastPingReceived(opponentPingTime);
               }
             }
 
@@ -396,9 +388,7 @@
               guestSets: [],
               hostScore: 0,
               guestScore: 0,
-              currentTurn: hostGoesFirst ? 'host' : 'guest',
-              hostLastPing: Date.now(),
-              guestLastPing: Date.now()
+              currentTurn: hostGoesFirst ? 'host' : 'guest'
             });
 
             setDeck(remaining);
@@ -611,32 +601,6 @@
             });
             resetGame();
           };
-
-          // Ping system: send heartbeat every 2 seconds, check for opponent disconnect after 6 seconds
-          useEffect(() => {
-            if (gameState !== 'playing' || !connected) return;
-            
-            const pingInterval = setInterval(async () => {
-              const myRole = isHost ? 'host' : 'guest';
-              
-              // Send my ping
-              if (gameDataRef.current) {
-                await gameDataRef.current.update({
-                  [`${myRole}LastPing`]: Date.now()
-                });
-              }
-              
-              // Check if opponent hasn't pinged in 6 seconds
-              const timeSinceLastPing = Date.now() - lastPingReceived;
-              if (timeSinceLastPing > 6000) {
-                setConnected(false);
-                setGameEnded(true);
-                setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
-              }
-            }, 2000);
-            
-            return () => clearInterval(pingInterval);
-          }, [gameState, connected, lastPingReceived, opponentName, isHost]);
 
           // Cleanup on unmount and window close
           useEffect(() => {

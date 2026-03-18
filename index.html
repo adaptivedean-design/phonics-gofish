@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go-Fish Phonics</title>
+    <title>Go-Fish Phonics v2</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -141,8 +141,6 @@
           const [showSets, setShowSets] = useState(false);
           const [disconnectMessage, setDisconnectMessage] = useState('');
           const [myPlayerId, setMyPlayerId] = useState('');
-          const [lastPingReceived, setLastPingReceived] = useState(Date.now());
-          const [isMyTurnToPing, setIsMyTurnToPing] = useState(false);
           
           const roomRef = useRef(null);
           const gameDataRef = useRef(null);
@@ -233,7 +231,7 @@
               roomRef.current.child('guestConnected').on('value', (snapshot) => {
                 const isConnected = snapshot.val();
                 if (isConnected === false && connected) {
-                  setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
+                  setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended.`);
                   setGameEnded(true);
                 }
               });
@@ -261,7 +259,7 @@
               roomRef.current.child('hostConnected').on('value', (snapshot) => {
                 const isConnected = snapshot.val();
                 if (isConnected === false && connected) {
-                  setDisconnectMessage(`${opponentName || 'The host'} has disconnected. The game has ended. You may close this window.`);
+                  setDisconnectMessage(`${opponentName || 'The host'} has disconnected. The game has ended.`);
                   setGameEnded(true);
                 }
               });
@@ -301,8 +299,6 @@
               setOpponentHandCount(data[`${opponentRole}HandCount`] || 0);
               setDeckCount(data.deckCount || 0);
               setIsMyTurn(data.currentTurn === myRole);
-              setIsMyTurnToPing(data.currentTurn === myRole);
-              setLastPingReceived(Date.now()); // Reset ping timer when game starts
               setGameState('playing');
             }
 
@@ -318,12 +314,6 @@
 
               if (data.deck && isHost) {
                 setDeck(data.deck);
-              }
-              
-              // Handle ping/pong
-              const opponentPingTime = data[`${opponentRole}LastPing`];
-              if (opponentPingTime) {
-                setLastPingReceived(opponentPingTime);
               }
             }
 
@@ -398,9 +388,7 @@
               guestSets: [],
               hostScore: 0,
               guestScore: 0,
-              currentTurn: hostGoesFirst ? 'host' : 'guest',
-              hostLastPing: Date.now(),
-              guestLastPing: Date.now()
+              currentTurn: hostGoesFirst ? 'host' : 'guest'
             });
 
             setDeck(remaining);
@@ -614,68 +602,12 @@
             resetGame();
           };
 
-          // Active ping system: send heartbeat every 2 seconds, check for opponent disconnect after 6 seconds
+          // Cleanup on unmount
           useEffect(() => {
-            if (gameState !== 'playing' || !connected) return;
-            
-            // Send immediate first ping when game starts
-            const myRole = isHost ? 'host' : 'guest';
-            if (gameDataRef.current) {
-              gameDataRef.current.update({
-                [`${myRole}LastPing`]: Date.now()
-              });
-            }
-            
-            const pingInterval = setInterval(async () => {
-              // Send my ping
-              if (gameDataRef.current) {
-                await gameDataRef.current.update({
-                  [`${myRole}LastPing`]: Date.now()
-                });
-              }
-              
-              // Only check for disconnect if we've received at least one ping from opponent
-              // (lastPingReceived will be updated from opponent's ping in handleGameDataChange)
-              const timeSinceLastPing = Date.now() - lastPingReceived;
-              if (timeSinceLastPing > 10000) { // Increased to 10 seconds to be safer
-                setConnected(false);
-                setGameEnded(true);
-                setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);
-              }
-            }, 2000);
-            
-            return () => clearInterval(pingInterval);
-          }, [gameState, connected, lastPingReceived, opponentName, isHost]);
-
-          // Cleanup on unmount and window close
-          useEffect(() => {
-            const handleBeforeUnload = () => {
-              if (roomRef.current) {
-                const playerField = isHost ? 'hostConnected' : 'guestConnected';
-                roomRef.current.update({ [playerField]: false });
-                
-                // If host, delete the entire game
-                if (isHost && gameDataRef.current) {
-                  gameDataRef.current.remove();
-                  roomRef.current.remove();
-                }
-              }
-            };
-
-            window.addEventListener('beforeunload', handleBeforeUnload);
-
             return () => {
-              window.removeEventListener('beforeunload', handleBeforeUnload);
-              
               if (roomRef.current) {
                 const playerField = isHost ? 'hostConnected' : 'guestConnected';
                 roomRef.current.update({ [playerField]: false });
-                
-                // If host, delete the entire game
-                if (isHost && gameDataRef.current) {
-                  gameDataRef.current.remove();
-                  roomRef.current.remove();
-                }
               }
               if (gameDataRef.current) {
                 gameDataRef.current.off();
@@ -684,7 +616,7 @@
                 presenceRef.current.off();
               }
             };
-          }, [isHost]);
+          }, []);
 
           if (gameState === 'setup') {
             return (
@@ -836,10 +768,10 @@
           return (
             <div className="w-full h-screen bg-white flex flex-col">
               {gameEnded && disconnectMessage && (
-                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-xl shadow-2xl p-10 max-w-lg text-center border-4 border-red-500">
-                    <h2 className="text-3xl font-bold text-red-600 mb-6">Game Ended</h2>
-                    <p className="text-gray-800 text-lg mb-2">{disconnectMessage}</p>
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md text-center">
+                    <h2 className="text-2xl font-bold text-red-600 mb-4">Game Ended</h2>
+                    <p className="text-gray-700 mb-6">{disconnectMessage}</p>
                   </div>
                 </div>
               )}

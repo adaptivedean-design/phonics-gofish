@@ -302,7 +302,7 @@
               setDeckCount(data.deckCount || 0);
               setIsMyTurn(data.currentTurn === myRole);
               setIsMyTurnToPing(data.currentTurn === myRole);
-              setLastPingReceived(Date.now());
+              setLastPingReceived(Date.now()); // Reset ping timer when game starts
               setGameState('playing');
             }
 
@@ -618,9 +618,15 @@
           useEffect(() => {
             if (gameState !== 'playing' || !connected) return;
             
+            // Send immediate first ping when game starts
+            const myRole = isHost ? 'host' : 'guest';
+            if (gameDataRef.current) {
+              gameDataRef.current.update({
+                [`${myRole}LastPing`]: Date.now()
+              });
+            }
+            
             const pingInterval = setInterval(async () => {
-              const myRole = isHost ? 'host' : 'guest';
-              
               // Send my ping
               if (gameDataRef.current) {
                 await gameDataRef.current.update({
@@ -628,9 +634,10 @@
                 });
               }
               
-              // Check if opponent hasn't pinged in 6 seconds
+              // Only check for disconnect if we've received at least one ping from opponent
+              // (lastPingReceived will be updated from opponent's ping in handleGameDataChange)
               const timeSinceLastPing = Date.now() - lastPingReceived;
-              if (timeSinceLastPing > 6000) {
+              if (timeSinceLastPing > 10000) { // Increased to 10 seconds to be safer
                 setConnected(false);
                 setGameEnded(true);
                 setDisconnectMessage(`${opponentName || 'Your opponent'} has disconnected. The game has ended. You may close this window.`);

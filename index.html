@@ -111,6 +111,10 @@
         const WifiOff = ({size=16}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/></svg>;
 
         const GoFishPhonics = () => {
+          // Sound effects
+          const cardReceivedSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2260/2260-preview.mp3');
+          const setCompletedSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3');
+          
           const [gameState, setGameState] = useState('setup');
           const [roomCode, setRoomCode] = useState('');
           const [playerName, setPlayerName] = useState('');
@@ -532,6 +536,9 @@
             setMyHand(replenishedHand);
             setMySets(newSets);
             setMyScore(newScore);
+            
+            // Play celebration sound for completing a set
+            setCompletedSound.play().catch(e => console.log('Sound play failed:', e));
           };
 
           useEffect(() => {
@@ -539,6 +546,14 @@
               checkForSets(myHand);
             }
           }, [myHand]);
+
+          // Play sound when receiving a card
+          useEffect(() => {
+            if (gameState === 'playing' && myHand.length > 0) {
+              // Play sound when hand size increases (received a card)
+              cardReceivedSound.play().catch(e => console.log('Sound play failed:', e));
+            }
+          }, [myHand.length]);
 
           useEffect(() => {
             if (gameState === 'playing' && deckCount === 0 && myHand.length === 0 && opponentHandCount === 0 && !gameEnded) {

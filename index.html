@@ -143,6 +143,9 @@
           const [winner, setWinner] = useState(null);
           const [showAllCards, setShowAllCards] = useState(false);
           const [showSets, setShowSets] = useState(false);
+          const [showScrollTop, setShowScrollTop] = useState(false);
+          const [showScrollBottom, setShowScrollBottom] = useState(false);
+          const allCardsContainerRef = useRef(null);
           const [disconnectMessage, setDisconnectMessage] = useState('');
           const [myPlayerId, setMyPlayerId] = useState('');
           
@@ -639,6 +642,28 @@
             setDeckCount(0);
           };
 
+          const handleScrollIndicators = () => {
+            if (!allCardsContainerRef.current) return;
+            
+            const container = allCardsContainerRef.current;
+            const scrollTop = container.scrollTop;
+            const scrollHeight = container.scrollHeight;
+            const clientHeight = container.clientHeight;
+            
+            // Show top indicator if scrolled down more than 50px
+            setShowScrollTop(scrollTop > 50);
+            
+            // Show bottom indicator if not at bottom (more than 50px from bottom)
+            setShowScrollBottom(scrollTop < scrollHeight - clientHeight - 50);
+          };
+
+          // Check scroll indicators when modal opens or hand changes
+          useEffect(() => {
+            if (showAllCards && allCardsContainerRef.current) {
+              handleScrollIndicators();
+            }
+          }, [showAllCards, myHand]);
+
           const returnToSetup = async () => {
             await gameDataRef.current.update({
               gameState: 'setup'
@@ -843,19 +868,31 @@
               {showAllCards && (
                 <div className="absolute inset-0 z-50 flex items-center justify-end">
                   <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAllCards(false)}></div>
-                  <div className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" style={{width: '66.66%', marginLeft: '38px'}} onClick={(e) => e.stopPropagation()} onDragOver={(e) => {
-                    e.preventDefault();
-                    const container = e.currentTarget;
-                    const rect = container.getBoundingClientRect();
-                    const scrollThreshold = 100;
-                    const scrollSpeed = 10;
+                  <div 
+                    ref={allCardsContainerRef}
+                    className="bg-white rounded-lg shadow-2xl p-6 max-h-[90vh] overflow-y-auto relative" 
+                    style={{width: '66.66%', marginLeft: '38px'}} 
+                    onClick={(e) => e.stopPropagation()} 
+                    onScroll={handleScrollIndicators}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const container = e.currentTarget;
+                      const rect = container.getBoundingClientRect();
+                      const scrollThreshold = 100;
+                      const scrollSpeed = 10;
+                      
+                      if (e.clientY < rect.top + scrollThreshold) {
+                        container.scrollTop -= scrollSpeed;
+                      } else if (e.clientY > rect.bottom - scrollThreshold) {
+                        container.scrollTop += scrollSpeed;
+                      }
+                    }}
+                  >
+                    {/* Top scroll indicator */}
+                    {showScrollTop && (
+                      <div className="sticky top-0 left-0 right-0 h-3 bg-gradient-to-b from-yellow-400 to-transparent z-10 animate-pulse pointer-events-none" />
+                    )}
                     
-                    if (e.clientY < rect.top + scrollThreshold) {
-                      container.scrollTop -= scrollSpeed;
-                    } else if (e.clientY > rect.bottom - scrollThreshold) {
-                      container.scrollTop += scrollSpeed;
-                    }
-                  }}>
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-2xl font-bold">Your Hand - Organize Your Cards</h2>
                       <button 
@@ -880,6 +917,11 @@
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Bottom scroll indicator */}
+                    {showScrollBottom && (
+                      <div className="sticky bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-yellow-400 to-transparent animate-pulse pointer-events-none" />
+                    )}
                   </div>
                 </div>
               )}

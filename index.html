@@ -1104,8 +1104,11 @@
                       />
                       <button 
                         onClick={(e) => { e.stopPropagation(); giveCard(); }} 
-                        className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-500 text-white rounded-full p-3 hover:bg-red-600 shadow-lg"
+                        className="absolute -bottom-16 left-0 right-0 bg-red-500 text-white rounded-lg px-6 py-4 hover:bg-red-600 shadow-xl flex items-center justify-between text-xl font-bold"
+                        style={{width: '335px'}}
                       >
+                        <ArrowUp />
+                        <span>Pass Card</span>
                         <ArrowUp />
                       </button>
                     </div>

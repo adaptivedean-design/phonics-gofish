@@ -872,7 +872,7 @@
                     {/* Top scroll indicator - thick pulsing bar on OUTSIDE */}
                     {showScrollTop && (
                       <div 
-                        className="absolute -top-2 left-0 right-0 h-2 rounded-t-lg animate-pulse z-20" 
+                        className="absolute -top-3 left-0 right-0 h-3 rounded-lg animate-pulse z-20" 
                         style={{
                           backgroundColor: '#50d3df',
                           boxShadow: '0 0 20px #50d3df, 0 0 40px #50d3df',
@@ -928,7 +928,7 @@
                     {/* Bottom scroll indicator - thick pulsing bar on OUTSIDE */}
                     {showScrollBottom && (
                       <div 
-                        className="absolute -bottom-2 left-0 right-0 h-2 rounded-b-lg animate-pulse z-20" 
+                        className="absolute -bottom-3 left-0 right-0 h-3 rounded-lg animate-pulse z-20" 
                         style={{
                           backgroundColor: '#50d3df',
                           boxShadow: '0 0 20px #50d3df, 0 0 40px #50d3df',
@@ -1101,11 +1101,29 @@
               )}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-4">
                 <img src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Adaptive Logo" style={{width: '120px'}} />
-                <div className={`bg-white shadow-lg rounded-lg p-3 ${isMyTurn ? 'animate-pulse border-2 border-yellow-400' : 'border-2 border-gray-300'}`}>
+                <div 
+                  className={`bg-white shadow-lg rounded-lg p-3 border-2 ${isMyTurn ? 'border-yellow-400' : 'border-gray-300'}`}
+                  style={isMyTurn ? {
+                    animation: 'flash 0.8s ease-in-out infinite',
+                    boxShadow: '0 0 30px rgba(250, 204, 21, 0.8), 0 0 60px rgba(250, 204, 21, 0.4)'
+                  } : {}}
+                >
                   <div className="text-sm font-semibold text-gray-600 mb-1">{playerName || 'Your'}'s Hand</div>
                   <div className="text-lg font-bold">{isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}</div>
                 </div>
               </div>
+              <style dangerouslySetInnerHTML={{__html: `
+                @keyframes flash {
+                  0%, 100% { 
+                    border-color: #fbbf24;
+                    box-shadow: 0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.5);
+                  }
+                  50% { 
+                    border-color: #f59e0b;
+                    box-shadow: 0 0 50px rgba(245, 158, 11, 1), 0 0 80px rgba(245, 158, 11, 0.7);
+                  }
+                }
+              `}} />
               <div className="absolute top-4 right-4 bg-white shadow-lg rounded-lg p-3 z-20 border-2 border-gray-300">
                 <div className="flex gap-6">
                   <div className="text-center">

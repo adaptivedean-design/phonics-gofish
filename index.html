@@ -576,10 +576,16 @@
               setCompletedSound.current.play().catch(e => console.log('Sound play failed:', e));
             }
             
-            // Confetti celebration!
+            // BIG confetti celebration!
             const duration = 3000;
             const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+            const defaults = { 
+              startVelocity: 45, 
+              spread: 360, 
+              ticks: 100, 
+              zIndex: 100,
+              colors: ['#23879f', '#16b7a7', '#e4e09a', '#bdf6e0', '#50d3df', '#fbbf24', '#f59e0b']
+            };
 
             function randomInRange(min, max) {
               return Math.random() * (max - min) + min;
@@ -592,18 +598,25 @@
                 return clearInterval(interval);
               }
 
-              const particleCount = 50 * (timeLeft / duration);
+              const particleCount = 100 * (timeLeft / duration);
               
-              // Confetti from two points
+              // Confetti from multiple points - more explosive!
               confetti(Object.assign({}, defaults, { 
                 particleCount, 
-                origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } 
+                origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+                scalar: 1.2
               }));
               confetti(Object.assign({}, defaults, { 
                 particleCount, 
-                origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } 
+                origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+                scalar: 1.2
               }));
-            }, 250);
+              confetti(Object.assign({}, defaults, { 
+                particleCount: particleCount / 2, 
+                origin: { x: 0.5, y: 0.5 },
+                scalar: 1.5
+              }));
+            }, 150);
           };
 
           useEffect(() => {
@@ -902,14 +915,20 @@
                   style={{
                     left: '8rem',
                     bottom: 'calc(4rem + 56px)',
-                    animation: 'tossCard 3s ease-in-out forwards'
+                    animation: 'tossCard 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
+                    perspective: '1000px',
+                    transformStyle: 'preserve-3d'
                   }}
                 >
                   <img 
                     src={CARD_IMAGES[tossingCard.id]} 
                     alt={tossingCard.name} 
                     className="rounded-lg shadow-2xl"
-                    style={{width: '335px', height: '430px'}}
+                    style={{
+                      width: '335px', 
+                      height: '430px',
+                      backfaceVisibility: 'visible'
+                    }}
                   />
                 </div>
               )}
@@ -917,15 +936,19 @@
               <style dangerouslySetInnerHTML={{__html: `
                 @keyframes tossCard {
                   0% {
-                    transform: translate(0, 0) rotate(0deg) scale(1);
+                    transform: translate(0, 0) rotateY(0deg) rotateZ(0deg) scale(1);
                     opacity: 1;
                   }
-                  50% {
-                    transform: translate(40vw, -40vh) rotate(720deg) scale(0.7);
-                    opacity: 0.8;
+                  30% {
+                    transform: translate(15vw, -15vh) rotateY(90deg) rotateZ(180deg) scale(0.6);
+                    opacity: 0.9;
+                  }
+                  60% {
+                    transform: translate(35vw, -35vh) rotateY(180deg) rotateZ(360deg) scale(0.4);
+                    opacity: 0.7;
                   }
                   100% {
-                    transform: translate(50vw, -60vh) rotate(1080deg) scale(0.3);
+                    transform: translate(50vw, -50vh) rotateY(270deg) rotateZ(540deg) scale(0.2);
                     opacity: 0;
                   }
                 }

@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -147,6 +148,7 @@
           const [showScrollBottom, setShowScrollBottom] = useState(false);
           const allCardsContainerRef = useRef(null);
           const [disconnectMessage, setDisconnectMessage] = useState('');
+          const [tossingCard, setTossingCard] = useState(null);
           const [myPlayerId, setMyPlayerId] = useState('');
           
           const roomRef = useRef(null);
@@ -491,6 +493,12 @@
           const giveCard = async () => {
             if (!selectedCard) return;
 
+            // Start tossing animation
+            setTossingCard(selectedCard);
+            
+            // Wait 3 seconds for animation to complete
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
             const snapshot = await gameDataRef.current.once('value');
             const data = snapshot.val();
             
@@ -512,6 +520,7 @@
 
             setMyHand(replenishedHand);
             setSelectedCard(null);
+            setTossingCard(null);
           };
 
           const endTurn = async () => {
@@ -566,6 +575,35 @@
               setCompletedSound.current.currentTime = 0; // Reset to start
               setCompletedSound.current.play().catch(e => console.log('Sound play failed:', e));
             }
+            
+            // Confetti celebration!
+            const duration = 3000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+            function randomInRange(min, max) {
+              return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+              const timeLeft = animationEnd - Date.now();
+
+              if (timeLeft <= 0) {
+                return clearInterval(interval);
+              }
+
+              const particleCount = 50 * (timeLeft / duration);
+              
+              // Confetti from two points
+              confetti(Object.assign({}, defaults, { 
+                particleCount, 
+                origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } 
+              }));
+              confetti(Object.assign({}, defaults, { 
+                particleCount, 
+                origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } 
+              }));
+            }, 250);
           };
 
           useEffect(() => {
@@ -857,6 +895,52 @@
 
           return (
             <div className="w-full h-screen bg-white flex flex-col">
+              {/* Tossing card animation */}
+              {tossingCard && (
+                <div 
+                  className="absolute z-50 pointer-events-none"
+                  style={{
+                    left: '8rem',
+                    bottom: 'calc(4rem + 56px)',
+                    animation: 'tossCard 3s ease-in-out forwards'
+                  }}
+                >
+                  <img 
+                    src={CARD_IMAGES[tossingCard.id]} 
+                    alt={tossingCard.name} 
+                    className="rounded-lg shadow-2xl"
+                    style={{width: '335px', height: '430px'}}
+                  />
+                </div>
+              )}
+              
+              <style dangerouslySetInnerHTML={{__html: `
+                @keyframes tossCard {
+                  0% {
+                    transform: translate(0, 0) rotate(0deg) scale(1);
+                    opacity: 1;
+                  }
+                  50% {
+                    transform: translate(40vw, -40vh) rotate(720deg) scale(0.7);
+                    opacity: 0.8;
+                  }
+                  100% {
+                    transform: translate(50vw, -60vh) rotate(1080deg) scale(0.3);
+                    opacity: 0;
+                  }
+                }
+                @keyframes flash {
+                  0%, 100% { 
+                    border-color: #fbbf24;
+                    box-shadow: 0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.5);
+                  }
+                  50% { 
+                    border-color: #f59e0b;
+                    box-shadow: 0 0 50px rgba(245, 158, 11, 1), 0 0 80px rgba(245, 158, 11, 0.7);
+                  }
+                }
+              `}} />
+              
               {gameEnded && disconnectMessage && (
                 <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
                   <div className="bg-white rounded-xl shadow-2xl p-10 max-w-lg text-center border-4 border-red-500">
@@ -1112,18 +1196,6 @@
                   <div className="text-lg font-bold">{isMyTurn ? "Your Turn" : `${opponentName || "Opponent"}'s Turn`}</div>
                 </div>
               </div>
-              <style dangerouslySetInnerHTML={{__html: `
-                @keyframes flash {
-                  0%, 100% { 
-                    border-color: #fbbf24;
-                    box-shadow: 0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.5);
-                  }
-                  50% { 
-                    border-color: #f59e0b;
-                    box-shadow: 0 0 50px rgba(245, 158, 11, 1), 0 0 80px rgba(245, 158, 11, 0.7);
-                  }
-                }
-              `}} />
               <div className="absolute top-4 right-4 bg-white shadow-lg rounded-lg p-3 z-20 border-2 border-gray-300">
                 <div className="flex gap-6">
                   <div className="text-center">

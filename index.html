@@ -910,7 +910,7 @@
                   style={{
                     left: '8rem',
                     bottom: 'calc(4rem + 56px)',
-                    animation: 'tossCard 3s ease-out forwards',
+                    animation: 'tossCard 3s linear forwards',
                     perspective: '1000px',
                     transformStyle: 'preserve-3d'
                   }}
@@ -931,15 +931,23 @@
               <style dangerouslySetInnerHTML={{__html: `
                 @keyframes tossCard {
                   0% {
-                    transform: translate(0, 0) rotateX(0deg) rotateZ(0deg) scale(1);
+                    transform: translate(0, 0) rotateX(0deg) scale(1);
                     opacity: 1;
                   }
-                  20% {
-                    transform: translate(0, 0) rotateX(30deg) rotateZ(-30deg) scale(1);
+                  25% {
+                    transform: translate(10vw, -15vh) rotateX(360deg) scale(0.75);
                     opacity: 1;
+                  }
+                  50% {
+                    transform: translate(20vw, -30vh) rotateX(720deg) scale(0.5);
+                    opacity: 1;
+                  }
+                  75% {
+                    transform: translate(30vw, -45vh) rotateX(1080deg) scale(0.35);
+                    opacity: 0.9;
                   }
                   100% {
-                    transform: translate(0, -80vh) rotateX(30deg) rotateZ(-30deg) scale(0.3);
+                    transform: translate(40vw, -55vh) rotateX(1440deg) scale(0.25);
                     opacity: 0;
                   }
                 }

@@ -152,6 +152,8 @@
           const [myPlayerId, setMyPlayerId] = useState('');
           const [completingSet, setCompletingSet] = useState(null); // {setKey, cards: [card objects]}
           const [showSetOverlay, setShowSetOverlay] = useState(false);
+          const [incomingCard, setIncomingCard] = useState(null); // card object
+          const [showIncomingOverlay, setShowIncomingOverlay] = useState(false);
           
           const roomRef = useRef(null);
           const gameDataRef = useRef(null);
@@ -449,6 +451,16 @@
 
             const newDeck = [...currentDeck];
             const drawnCard = newDeck.pop();
+            
+            // Show incoming card animation
+            setIncomingCard(drawnCard);
+            setShowIncomingOverlay(true);
+            
+            // Wait 3 seconds for animation
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            setShowIncomingOverlay(false);
+            setIncomingCard(null);
+            
             const myRole = isHost ? 'host' : 'guest';
             const newHand = [...myHand, drawnCard];
 
@@ -615,16 +627,31 @@
 
           // Track previous opponent hand count to detect when we receive a card from them
           const prevOpponentHandCount = useRef(opponentHandCount);
+          const prevMyHandCount = useRef(myHand.length);
+          
           useEffect(() => {
-            if (gameState === 'playing' && opponentHandCount < prevOpponentHandCount.current) {
-              // Opponent's hand decreased, meaning they gave us a card
+            if (gameState === 'playing' && opponentHandCount < prevOpponentHandCount.current && myHand.length > prevMyHandCount.current) {
+              // Opponent's hand decreased AND our hand increased, meaning they gave us a card
+              // Get the new card (last one in hand)
+              const receivedCard = myHand[myHand.length - 1];
+              
+              // Show incoming card animation
+              setIncomingCard(receivedCard);
+              setShowIncomingOverlay(true);
+              
+              setTimeout(() => {
+                setShowIncomingOverlay(false);
+                setIncomingCard(null);
+              }, 3000);
+              
               if (cardReceivedSound.current) {
-                cardReceivedSound.current.currentTime = 0; // Reset to start
+                cardReceivedSound.current.currentTime = 0;
                 cardReceivedSound.current.play().catch(e => console.log('Sound play failed:', e));
               }
             }
             prevOpponentHandCount.current = opponentHandCount;
-          }, [opponentHandCount, gameState]);
+            prevMyHandCount.current = myHand.length;
+          }, [opponentHandCount, myHand, gameState]);
 
           useEffect(() => {
             if (gameState === 'playing' && deckCount === 0 && myHand.length === 0 && opponentHandCount === 0 && !gameEnded) {
@@ -922,11 +949,11 @@
               )}
               
               {showSetOverlay && completingSet && (
-                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-                  <div className="relative">
-                    <div className="flex gap-4 p-8 bg-white rounded-xl" style={{
-                      animation: 'expandCards 2s ease-out forwards'
-                    }}>
+                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{zIndex: 100}}>
+                  <div className="relative" style={{
+                    animation: 'expandCards 4s ease-out forwards'
+                  }}>
+                    <div className="flex gap-4 p-8 bg-white rounded-xl">
                       {completingSet.cards.map((card, i) => (
                         <div 
                           key={card.id}
@@ -940,7 +967,37 @@
                         </div>
                       ))}
                     </div>
-                    {/* Glowing frame around all 4 cards */}
+                    {/* Glowing frame around all 4 cards - expands with cards */}
+                    <div 
+                      className="absolute inset-0 rounded-xl pointer-events-none" 
+                      style={{
+                        border: '4px solid #16b7a7',
+                        boxShadow: '0 0 30px rgba(22, 183, 167, 0.8), 0 0 60px rgba(22, 183, 167, 0.4)',
+                        animation: 'glowPulse 1s ease-in-out infinite'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {showIncomingOverlay && incomingCard && (
+                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{zIndex: 100}}>
+                  <div className="relative flex flex-col items-center" style={{
+                    animation: 'expandCards 3s ease-out forwards'
+                  }}>
+                    <h2 className="text-4xl font-bold italic mb-4 text-white" style={{
+                      textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                    }}>Incoming..!</h2>
+                    <div className="p-8 bg-white rounded-xl">
+                      <div className="w-44 h-60 rounded-lg shadow-2xl relative">
+                        <img 
+                          src={CARD_IMAGES[incomingCard.id]} 
+                          alt={incomingCard.name} 
+                          className="w-full h-full object-cover rounded-lg" 
+                        />
+                      </div>
+                    </div>
+                    {/* Glowing frame around card - expands with card */}
                     <div 
                       className="absolute inset-0 rounded-xl pointer-events-none" 
                       style={{

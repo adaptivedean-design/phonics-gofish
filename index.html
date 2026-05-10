@@ -588,8 +588,8 @@
             // Start tossing animation
             setTossingCard(selectedCard);
             
-            // Wait 3 seconds for animation to complete
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Wait 2 seconds for animation to complete
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             const snapshot = await gameDataRef.current.once('value');
             const data = snapshot.val();
@@ -995,7 +995,7 @@
                   style={{
                     left: '8rem',
                     bottom: 'calc(4rem + 56px)',
-                    animation: 'tossCard 3s linear forwards',
+                    animation: 'tossCard 2s linear forwards',
                     perspective: '1000px',
                     transformStyle: 'preserve-3d'
                   }}

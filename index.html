@@ -219,6 +219,22 @@
           const roomRef = useRef(null);
           const gameDataRef = useRef(null);
           const presenceRef = useRef(null);
+          const INCOMING_ANIMATION_MS = 1500;
+
+          const playIncomingAnimation = (card) => {
+            if (!card) return Promise.resolve();
+
+            setIncomingCard(card);
+            setShowIncomingOverlay(true);
+
+            return new Promise(resolve => {
+              setTimeout(() => {
+                setShowIncomingOverlay(false);
+                setIncomingCard(null);
+                resolve();
+              }, INCOMING_ANIMATION_MS);
+            });
+          };
 
           // Preload all card images
           useEffect(() => {
@@ -514,13 +530,7 @@
             const drawnCard = newDeck.pop();
             
             // Show incoming card animation
-            setIncomingCard(drawnCard);
-            setShowIncomingOverlay(true);
-            
-            // Wait 1.5 seconds for animation
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            setShowIncomingOverlay(false);
-            setIncomingCard(null);
+            await playIncomingAnimation(drawnCard);
             
             const myRole = isHost ? 'host' : 'guest';
             const newHand = [...myHand, drawnCard];
@@ -697,13 +707,7 @@
               const receivedCard = myHand[myHand.length - 1];
               
               // Show incoming card animation
-              setIncomingCard(receivedCard);
-              setShowIncomingOverlay(true);
-              
-              setTimeout(() => {
-                setShowIncomingOverlay(false);
-                setIncomingCard(null);
-              }, 1500);
+              playIncomingAnimation(receivedCard);
               
               if (cardReceivedSound.current) {
                 cardReceivedSound.current.currentTime = 0;
@@ -1044,7 +1048,7 @@
               {showIncomingOverlay && incomingCard && (
                 <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{zIndex: 100}}>
                   <div className="relative flex flex-col items-center" style={{
-                    animation: 'expandCards 1.5s ease-out forwards'
+                    animation: `expandCards ${INCOMING_ANIMATION_MS}ms ease-out forwards`
                   }}>
                     <h2 className="text-4xl font-bold italic mb-4 text-white" style={{
                       textShadow: '0 0 10px rgba(255,255,255,0.5)'

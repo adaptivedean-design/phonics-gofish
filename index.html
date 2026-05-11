@@ -755,6 +755,31 @@
             }
           }, [deckCount, myHand.length, opponentHandCount, gameState, gameEnded]);
 
+          const completedCardIds = new Set(
+            mySets.flatMap(set => (set.cards || []).map(card => card.id))
+          );
+          const visibleHandEntries = myHand
+            .map((card, handIndex) => ({ card, handIndex }))
+            .filter(({ card }) => !completedCardIds.has(card.id));
+          const visibleMyHand = visibleHandEntries.map(({ card }) => card);
+
+          useEffect(() => {
+            if (gameState !== 'playing' || completedCardIds.size === 0) return;
+
+            if (selectedCard && completedCardIds.has(selectedCard.id)) {
+              setSelectedCard(null);
+            }
+
+            if (visibleMyHand.length === myHand.length || !gameDataRef.current) return;
+
+            const myRole = isHost ? 'host' : 'guest';
+            gameDataRef.current.update({
+              [`${myRole}Hand`]: visibleMyHand,
+              [`${myRole}HandCount`]: visibleMyHand.length
+            });
+            setMyHand(visibleMyHand);
+          }, [gameState, myHand, mySets, selectedCard, isHost]);
+
           const handleDragStart = (e, card, index) => {
             setDraggedCard({ card, index });
           };
@@ -823,7 +848,7 @@
             if (showAllCards && allCardsContainerRef.current) {
               handleScrollIndicators();
             }
-          }, [showAllCards, myHand]);
+          }, [showAllCards, visibleMyHand.length]);
 
           const returnToSetup = async () => {
             await gameDataRef.current.update({
@@ -1160,27 +1185,27 @@
                     filter: brightness(1);
                   }
                   18% {
-                    transform: translate3d(6vw, -18vh, 0) rotateZ(-8deg) scale(.9);
+                    transform: translate3d(8vw, -5vh, 0) rotateZ(-4deg) scale(.9);
                     opacity: 1;
                     filter: brightness(1.05);
                   }
                   42% {
-                    transform: translate3d(18vw, -40vh, 0) rotateZ(7deg) scale(.64);
+                    transform: translate3d(20vw, -12vh, 0) rotateZ(3deg) scale(.66);
                     opacity: 1;
                     filter: brightness(1.1);
                   }
                   68% {
-                    transform: translate3d(32vw, -51vh, 0) rotateZ(18deg) scale(.42);
+                    transform: translate3d(33vw, -20vh, 0) rotateZ(7deg) scale(.43);
                     opacity: 0.9;
                     filter: brightness(1.04);
                   }
                   84% {
-                    transform: translate3d(40vw, -48vh, 0) rotateZ(12deg) scale(.32);
+                    transform: translate3d(41vw, -24vh, 0) rotateZ(5deg) scale(.32);
                     opacity: .7;
                     filter: brightness(.96);
                   }
                   100% {
-                    transform: translate3d(46vw, -42vh, 0) rotateZ(4deg) scale(.22);
+                    transform: translate3d(48vw, -28vh, 0) rotateZ(2deg) scale(.22);
                     opacity: 0;
                     filter: brightness(.9);
                   }
@@ -1280,13 +1305,13 @@
                         </button>
                       </div>
                       <div className="grid grid-cols-5 gap-4">
-                        {myHand.map((card, i) => (
-                          <div 
-                            key={card.id} 
-                            draggable 
-                            onDragStart={(e) => handleDragStart(e, card, i)} 
-                            onDragOver={(e) => handleDragOver(e, i)} 
-                            onDrop={(e) => handleDrop(e, i)} 
+                        {visibleHandEntries.map(({ card, handIndex }, i) => (
+                          <div
+                            key={card.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, card, handIndex)}
+                            onDragOver={(e) => handleDragOver(e, i)}
+                            onDrop={(e) => handleDrop(e, handIndex)}
                             onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
                             className={`w-40 h-56 rounded-lg shadow-lg cursor-pointer relative gf-play-card gf-modal-card ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
                           >
@@ -1565,7 +1590,7 @@
                 )}
               </div>
               <div className="flex-1 p-2 flex items-end justify-center relative">
-                {selectedCard && (
+                {selectedCard && visibleMyHand.some(card => card.id === selectedCard.id) && (
                   <div className="absolute left-8 gf-selected-preview" style={{bottom: 'calc(3.5rem + 42px)', zIndex: showAllCards ? 60 : 10}}>
                     <div className="relative">
                       <img 
@@ -1602,13 +1627,13 @@
                     </button>
                   </div>
                   <div className="overflow-x-auto flex gap-2 px-3 max-w-full" style={{maxWidth: '720px'}}>
-                    {myHand.map((card, i) => (
-                      <div 
-                        key={card.id} 
-                        draggable 
-                        onDragStart={(e) => handleDragStart(e, card, i)} 
-                        onDragOver={(e) => handleDragOver(e, i)} 
-                        onDrop={(e) => handleDrop(e, i)} 
+                    {visibleHandEntries.map(({ card, handIndex }, i) => (
+                      <div
+                        key={card.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, card, handIndex)}
+                        onDragOver={(e) => handleDragOver(e, i)}
+                        onDrop={(e) => handleDrop(e, handIndex)}
                         onClick={() => setSelectedCard(selectedCard?.id === card.id ? null : card)}
                         className={`w-36 h-52 rounded-lg shadow-lg cursor-pointer relative flex-shrink-0 gf-play-card gf-hand-card ${selectedCard?.id === card.id ? 'border-4 border-yellow-400' : 'border-0'} ${dragOverIndex === i ? 'ring-4 ring-blue-400' : ''}`}
                       >

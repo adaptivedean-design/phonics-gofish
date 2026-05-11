@@ -220,7 +220,41 @@
           const gameDataRef = useRef(null);
           const presenceRef = useRef(null);
           const lastHandledPassedCardRef = useRef(null);
+          const soundEffectsUnlockedRef = useRef(false);
           const INCOMING_ANIMATION_MS = 1500;
+
+          const playSoundEffect = (soundRef) => {
+            if (!soundRef.current) return;
+
+            soundRef.current.currentTime = 0;
+            soundRef.current.volume = 1;
+            soundRef.current.play().catch(e => console.log('Sound play failed:', e));
+          };
+
+          const unlockSoundEffects = () => {
+            if (soundEffectsUnlockedRef.current) return;
+
+            const sounds = [cardReceivedSound.current, setCompletedSound.current].filter(Boolean);
+            if (sounds.length === 0) return;
+
+            soundEffectsUnlockedRef.current = true;
+            sounds.forEach(sound => {
+              const wasMuted = sound.muted;
+              sound.muted = true;
+              sound.volume = 1;
+
+              sound.play()
+                .then(() => {
+                  sound.pause();
+                  sound.currentTime = 0;
+                  sound.muted = wasMuted;
+                })
+                .catch(() => {
+                  sound.muted = wasMuted;
+                  soundEffectsUnlockedRef.current = false;
+                });
+            });
+          };
 
           const playIncomingAnimation = (card) => {
             if (!card) return Promise.resolve();
@@ -257,12 +291,14 @@
             // Create and preload whoosh sound
             const whoosh = new Audio('https://assets.mixkit.co/active_storage/sfx/1491/1491.wav');
             whoosh.preload = 'auto';
+            whoosh.volume = 1;
             whoosh.load();
             cardReceivedSound.current = whoosh;
-            
+
             // Create and preload sparkle sound
             const sparkle = new Audio('https://assets.mixkit.co/active_storage/sfx/866/866.wav');
             sparkle.preload = 'auto';
+            sparkle.volume = 1;
             sparkle.load();
             setCompletedSound.current = sparkle;
           }, []);
@@ -435,10 +471,7 @@
                 lastHandledPassedCardRef.current = passedCard.id;
                 playIncomingAnimation(passedCard.card);
 
-                if (cardReceivedSound.current) {
-                  cardReceivedSound.current.currentTime = 0;
-                  cardReceivedSound.current.play().catch(e => console.log('Sound play failed:', e));
-                }
+                playSoundEffect(cardReceivedSound);
               }
 
               if (data.deck && isHost) {
@@ -565,10 +598,7 @@
             setDeckCount(newDeck.length);
             
             // Play whoosh sound when drawing a card
-            if (cardReceivedSound.current) {
-              cardReceivedSound.current.currentTime = 0; // Reset to start
-              cardReceivedSound.current.play().catch(e => console.log('Sound play failed:', e));
-            }
+            playSoundEffect(cardReceivedSound);
 
             if (settings.endTurnMode === 'always-draw') {
               endTurn();
@@ -669,10 +699,7 @@
             setShowSetOverlay(true);
             
             // Play celebration sound immediately
-            if (setCompletedSound.current) {
-              setCompletedSound.current.currentTime = 0;
-              setCompletedSound.current.play().catch(e => console.log('Sound play failed:', e));
-            }
+            playSoundEffect(setCompletedSound);
             
             // Wait 2 seconds for animation to complete
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -844,7 +871,12 @@
 
           if (gameState === 'setup') {
             return (
-              <div className="w-full min-h-screen p-4 flex items-center justify-center" style={{background: 'linear-gradient(to bottom, #dafbe9, #c4f7e5)'}}>
+              <div
+                className="w-full min-h-screen p-4 flex items-center justify-center"
+                style={{background: 'linear-gradient(to bottom, #dafbe9, #c4f7e5)'}}
+                onPointerDown={unlockSoundEffects}
+                onKeyDown={unlockSoundEffects}
+              >
                 <div className="bg-white rounded-lg p-4 max-w-5xl w-full" style={{margin: 'clamp(8px, 2vh, 20px)', borderTop: '4px solid #23879f'}}>
                   <div className="text-center mb-4">
                     <img src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Adaptive Logo" className="mx-auto mb-2" style={{width: '125px'}} />
@@ -990,7 +1022,11 @@
           }
 
           return (
-            <div className="w-full min-h-screen gf-game-table flex flex-col">
+            <div
+              className="w-full min-h-screen gf-game-table flex flex-col"
+              onPointerDown={unlockSoundEffects}
+              onKeyDown={unlockSoundEffects}
+            >
               {/* Tossing card animation */}
               {tossingCard && (
                 <div 

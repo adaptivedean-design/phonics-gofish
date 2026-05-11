@@ -1097,31 +1097,20 @@
               )}
               
               {showIncomingOverlay && incomingCard && (
-                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center" style={{zIndex: 100}}>
-                  <div className="relative flex flex-col items-center" style={{
-                    animation: `expandCards ${INCOMING_ANIMATION_MS}ms ease-out forwards`
-                  }}>
-                    <h2 className="text-4xl font-bold italic mb-4 text-white" style={{
-                      textShadow: '0 0 10px rgba(255,255,255,0.5)'
-                    }}>Incoming..!</h2>
-                    <div className="p-8 bg-white rounded-xl">
-                      <div className="w-44 h-60 rounded-lg shadow-2xl relative">
-                        <img 
-                          src={CARD_IMAGES[incomingCard.id]} 
-                          alt={incomingCard.name} 
-                          className="w-full h-full object-cover rounded-lg" 
+                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center gf-incoming-overlay" style={{zIndex: 100}}>
+                  <div className="relative flex flex-col items-center gf-incoming-stage">
+                    <div className="gf-incoming-trail" />
+                    <h2 className="text-4xl font-bold italic mb-4 text-white gf-incoming-title">Incoming!</h2>
+                    <div className="p-8 bg-white rounded-xl gf-incoming-card-wrap">
+                      <div className="w-44 h-60 rounded-lg shadow-2xl relative gf-incoming-card">
+                        <img
+                          src={CARD_IMAGES[incomingCard.id]}
+                          alt={incomingCard.name}
+                          className="w-full h-full object-cover rounded-lg"
                         />
                       </div>
                     </div>
-                    {/* Glowing frame around card - expands with card */}
-                    <div 
-                      className="absolute inset-0 rounded-xl pointer-events-none" 
-                      style={{
-                        border: '4px solid #16b7a7',
-                        boxShadow: '0 0 30px rgba(22, 183, 167, 0.8), 0 0 60px rgba(22, 183, 167, 0.4)',
-                        animation: 'glowPulse 1s ease-in-out infinite'
-                      }}
-                    />
+                    <div className="absolute inset-0 rounded-xl pointer-events-none gf-incoming-frame" />
                   </div>
                 </div>
               )}
@@ -1273,6 +1262,148 @@
                   42% { opacity: .82; transform: scale(1.04); }
                   72% { opacity: .28; transform: scale(1.16); }
                   100% { opacity: 0; transform: scale(.72); }
+                }
+                .gf-incoming-overlay {
+                  animation: incomingOverlayFade ${INCOMING_ANIMATION_MS}ms ease-out forwards;
+                }
+                .gf-incoming-stage {
+                  animation: incomingStageSettle ${INCOMING_ANIMATION_MS}ms cubic-bezier(.18, .72, .2, 1) forwards;
+                  transform-origin: center center;
+                  will-change: transform, opacity, filter;
+                }
+                .gf-incoming-title {
+                  text-shadow: 0 3px 16px rgba(0, 0, 0, .38), 0 0 18px rgba(80, 211, 223, .66);
+                  animation: incomingTitlePop ${INCOMING_ANIMATION_MS}ms ease-out forwards;
+                }
+                .gf-incoming-card-wrap {
+                  position: relative;
+                  animation: incomingWrapGlow ${INCOMING_ANIMATION_MS}ms ease-out forwards;
+                  overflow: visible;
+                }
+                .gf-incoming-card {
+                  animation: incomingCardArrive ${INCOMING_ANIMATION_MS}ms cubic-bezier(.16, .84, .22, 1) forwards;
+                  transform-origin: center center;
+                  will-change: transform, opacity, filter;
+                }
+                .gf-incoming-card img {
+                  animation: incomingCardShine ${INCOMING_ANIMATION_MS}ms ease-out forwards;
+                }
+                .gf-incoming-frame {
+                  border: 4px solid rgba(22, 183, 167, 0);
+                  box-shadow: 0 0 0 rgba(22, 183, 167, 0);
+                  animation: incomingFrameLock ${INCOMING_ANIMATION_MS}ms ease-out forwards;
+                }
+                .gf-incoming-trail {
+                  position: absolute;
+                  width: 280px;
+                  height: 76px;
+                  right: 48%;
+                  top: 48%;
+                  border-radius: 999px;
+                  background: linear-gradient(90deg, rgba(80, 211, 223, 0), rgba(80, 211, 223, .58), rgba(251, 191, 36, .4), rgba(22, 183, 167, 0));
+                  filter: blur(16px);
+                  opacity: 0;
+                  transform: translate(48vw, -18px) rotate(-8deg) scaleX(.68);
+                  animation: incomingTrail ${INCOMING_ANIMATION_MS}ms ease-out forwards;
+                  z-index: -1;
+                }
+                @keyframes incomingOverlayFade {
+                  0% { background-color: rgba(0, 0, 0, 0); }
+                  14% { background-color: rgba(0, 0, 0, .68); }
+                  78% { background-color: rgba(0, 0, 0, .7); }
+                  100% { background-color: rgba(0, 0, 0, 0); }
+                }
+                @keyframes incomingStageSettle {
+                  0% { transform: scale(.92); opacity: 0; filter: saturate(.95); }
+                  18% { opacity: 1; }
+                  52% { transform: scale(1.03); filter: saturate(1.12); }
+                  74% { transform: scale(1); opacity: 1; filter: saturate(1.04); }
+                  100% { transform: scale(.94); opacity: 0; filter: saturate(.9); }
+                }
+                @keyframes incomingTitlePop {
+                  0%, 18% { opacity: 0; transform: translateY(12px) scale(.94); }
+                  34%, 74% { opacity: 1; transform: translateY(0) scale(1); }
+                  100% { opacity: 0; transform: translateY(-10px) scale(.96); }
+                }
+                @keyframes incomingWrapGlow {
+                  0% { box-shadow: 0 18px 42px rgba(0, 52, 82, .16); }
+                  46% { box-shadow: 0 24px 62px rgba(80, 211, 223, .3), 0 0 44px rgba(251, 191, 36, .18); }
+                  100% { box-shadow: 0 12px 28px rgba(0, 52, 82, .08); }
+                }
+                @keyframes incomingCardArrive {
+                  0% {
+                    transform: translate(46vw, -18vh) rotateZ(12deg) rotateY(-180deg) scale(.38);
+                    opacity: 0;
+                    filter: brightness(.88);
+                  }
+                  34% {
+                    transform: translate(10vw, -4vh) rotateZ(4deg) rotateY(-40deg) scale(.82);
+                    opacity: 1;
+                    filter: brightness(1.06);
+                  }
+                  58% {
+                    transform: translate(0, 0) rotateZ(-2deg) rotateY(0deg) scale(1.05);
+                    opacity: 1;
+                    filter: brightness(1.14);
+                  }
+                  74% {
+                    transform: translate(0, 0) rotateZ(0deg) rotateY(0deg) scale(1);
+                    opacity: 1;
+                    filter: brightness(1.04);
+                  }
+                  100% {
+                    transform: translate(0, 14px) rotateZ(0deg) rotateY(0deg) scale(.94);
+                    opacity: .08;
+                    filter: brightness(.92);
+                  }
+                }
+                @keyframes incomingCardShine {
+                  0%, 30% { filter: brightness(.96) saturate(1); }
+                  54% { filter: brightness(1.22) saturate(1.18); }
+                  76%, 100% { filter: brightness(1) saturate(1.04); }
+                }
+                @keyframes incomingFrameLock {
+                  0%, 34% {
+                    border-color: rgba(22, 183, 167, 0);
+                    box-shadow: 0 0 0 rgba(22, 183, 167, 0);
+                    transform: scale(.9);
+                    opacity: 0;
+                  }
+                  52% {
+                    border-color: #fbbf24;
+                    box-shadow: 0 0 30px rgba(251, 191, 36, .78), 0 0 62px rgba(80, 211, 223, .38);
+                    transform: scale(1.04);
+                    opacity: 1;
+                  }
+                  74% {
+                    border-color: #16b7a7;
+                    box-shadow: 0 0 28px rgba(22, 183, 167, .8), 0 0 56px rgba(80, 211, 223, .42);
+                    transform: scale(1);
+                    opacity: 1;
+                  }
+                  100% {
+                    border-color: rgba(22, 183, 167, .16);
+                    box-shadow: 0 0 14px rgba(22, 183, 167, .12);
+                    transform: scale(.96);
+                    opacity: 0;
+                  }
+                }
+                @keyframes incomingTrail {
+                  0% {
+                    opacity: 0;
+                    transform: translate(48vw, -18px) rotate(-8deg) scaleX(.68);
+                  }
+                  22% {
+                    opacity: .72;
+                  }
+                  60% {
+                    opacity: .34;
+                    transform: translate(6vw, -4px) rotate(-2deg) scaleX(1.08);
+                  }
+                  100% {
+                    opacity: 0;
+                    transform: translate(-6vw, 4px) rotate(0deg) scaleX(.6);
+                  }
                 }
                 @keyframes glowPulse {
                   0%, 100% {

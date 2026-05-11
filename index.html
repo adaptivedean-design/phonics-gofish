@@ -1029,25 +1029,20 @@
             >
               {/* Tossing card animation */}
               {tossingCard && (
-                <div 
-                  className="absolute z-50 pointer-events-none"
+                <div
+                  className="absolute z-50 pointer-events-none gf-pass-card-flight"
                   style={{
                     left: '8rem',
                     bottom: 'calc(4rem + 56px)',
-                    animation: 'tossCard 2s linear forwards',
                     perspective: '1000px',
                     transformStyle: 'preserve-3d'
                   }}
                 >
-                  <img 
-                    src={CARD_IMAGES[tossingCard.id]} 
-                    alt={tossingCard.name} 
-                    className="rounded-lg shadow-2xl"
-                    style={{
-                      width: '335px', 
-                      height: '430px',
-                      backfaceVisibility: 'visible'
-                    }}
+                  <div className="gf-pass-card-trail" />
+                  <img
+                    src={CARD_IMAGES[tossingCard.id]}
+                    alt={tossingCard.name}
+                    className="rounded-lg shadow-2xl gf-pass-card-image"
                   />
                 </div>
               )}
@@ -1133,26 +1128,92 @@
                     box-shadow: 0 0 50px rgba(80, 211, 223, 1), 0 0 100px rgba(80, 211, 223, 0.6);
                   }
                 }
+                .gf-pass-card-flight {
+                  animation: tossCard 2s cubic-bezier(.18, .72, .2, 1) forwards;
+                  transform-origin: center center;
+                  transform-style: preserve-3d;
+                  will-change: transform, opacity, filter;
+                }
+                .gf-pass-card-image {
+                  width: 335px;
+                  height: 430px;
+                  backface-visibility: visible;
+                  animation: passCardSpin 2s cubic-bezier(.2, .8, .2, 1) forwards;
+                  filter: drop-shadow(0 26px 24px rgba(0, 52, 82, 0.28));
+                  will-change: transform, filter;
+                }
+                .gf-pass-card-trail {
+                  position: absolute;
+                  inset: 16% -28% 18% -38%;
+                  border-radius: 999px;
+                  background: linear-gradient(90deg, rgba(80, 211, 223, 0), rgba(80, 211, 223, 0.58), rgba(251, 191, 36, 0.46), rgba(22, 183, 167, 0));
+                  filter: blur(16px);
+                  opacity: 0;
+                  transform: translateX(-18%) scaleX(.55);
+                  animation: passCardTrail 2s ease-out forwards;
+                  z-index: -1;
+                }
                 @keyframes tossCard {
                   0% {
-                    transform: translate(0, 0) rotateX(0deg) scale(1);
+                    transform: translate3d(0, 0, 0) rotateZ(0deg) scale(1);
                     opacity: 1;
+                    filter: brightness(1);
                   }
-                  25% {
-                    transform: translate(10vw, -15vh) rotateX(360deg) scale(0.75);
+                  18% {
+                    transform: translate3d(6vw, -18vh, 0) rotateZ(-8deg) scale(.9);
                     opacity: 1;
+                    filter: brightness(1.05);
                   }
-                  50% {
-                    transform: translate(20vw, -30vh) rotateX(720deg) scale(0.5);
+                  42% {
+                    transform: translate3d(18vw, -40vh, 0) rotateZ(7deg) scale(.64);
                     opacity: 1;
+                    filter: brightness(1.1);
                   }
-                  75% {
-                    transform: translate(30vw, -45vh) rotateX(1080deg) scale(0.35);
+                  68% {
+                    transform: translate3d(32vw, -51vh, 0) rotateZ(18deg) scale(.42);
                     opacity: 0.9;
+                    filter: brightness(1.04);
+                  }
+                  84% {
+                    transform: translate3d(40vw, -48vh, 0) rotateZ(12deg) scale(.32);
+                    opacity: .7;
+                    filter: brightness(.96);
                   }
                   100% {
-                    transform: translate(40vw, -55vh) rotateX(1440deg) scale(0.25);
+                    transform: translate3d(46vw, -42vh, 0) rotateZ(4deg) scale(.22);
                     opacity: 0;
+                    filter: brightness(.9);
+                  }
+                }
+                @keyframes passCardSpin {
+                  0% {
+                    transform: rotateY(0deg) rotateX(0deg);
+                  }
+                  32% {
+                    transform: rotateY(190deg) rotateX(12deg);
+                  }
+                  66% {
+                    transform: rotateY(405deg) rotateX(-8deg);
+                  }
+                  100% {
+                    transform: rotateY(540deg) rotateX(0deg);
+                  }
+                }
+                @keyframes passCardTrail {
+                  0% {
+                    opacity: 0;
+                    transform: translateX(-18%) scaleX(.55);
+                  }
+                  18% {
+                    opacity: .78;
+                  }
+                  72% {
+                    opacity: .56;
+                    transform: translateX(-8%) scaleX(1.18);
+                  }
+                  100% {
+                    opacity: 0;
+                    transform: translateX(10%) scaleX(.76);
                   }
                 }
                 @keyframes flash {

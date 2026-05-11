@@ -219,6 +219,7 @@
           const roomRef = useRef(null);
           const gameDataRef = useRef(null);
           const presenceRef = useRef(null);
+          const lastHandledPassedCardRef = useRef(null);
           const INCOMING_ANIMATION_MS = 1500;
 
           const playIncomingAnimation = (card) => {
@@ -424,6 +425,22 @@
               setMyScore(data[`${myRole}Score`] || 0);
               setOpponentScore(data[`${opponentRole}Score`] || 0);
 
+              const passedCard = data.lastPassedCard;
+              if (
+                passedCard &&
+                passedCard.to === myRole &&
+                passedCard.from !== myRole &&
+                passedCard.id !== lastHandledPassedCardRef.current
+              ) {
+                lastHandledPassedCardRef.current = passedCard.id;
+                playIncomingAnimation(passedCard.card);
+
+                if (cardReceivedSound.current) {
+                  cardReceivedSound.current.currentTime = 0;
+                  cardReceivedSound.current.play().catch(e => console.log('Sound play failed:', e));
+                }
+              }
+
               if (data.deck && isHost) {
                 setDeck(data.deck);
               }
@@ -500,7 +517,8 @@
               guestSets: [],
               hostScore: 0,
               guestScore: 0,
-              currentTurn: hostGoesFirst ? 'host' : 'guest'
+              currentTurn: hostGoesFirst ? 'host' : 'guest',
+              lastPassedCard: null
             });
 
             setDeck(remaining);
@@ -607,7 +625,13 @@
               [`${myRole}Hand`]: replenishedHand,
               [`${myRole}HandCount`]: replenishedHand.length,
               [`${opponentRole}Hand`]: newOpponentHand,
-              [`${opponentRole}HandCount`]: newOpponentHand.length
+              [`${opponentRole}HandCount`]: newOpponentHand.length,
+              lastPassedCard: {
+                id: `${myRole}-${opponentRole}-${selectedCard.id}-${Date.now()}`,
+                from: myRole,
+                to: opponentRole,
+                card: selectedCard
+              }
             });
 
             setMyHand(replenishedHand);
@@ -696,28 +720,6 @@
             }
           }, [myHand]);
 
-          // Track previous opponent hand count to detect when we receive a card from them
-          const prevOpponentHandCount = useRef(opponentHandCount);
-          const prevMyHandCount = useRef(myHand.length);
-          
-          useEffect(() => {
-            if (gameState === 'playing' && opponentHandCount < prevOpponentHandCount.current && myHand.length > prevMyHandCount.current) {
-              // Opponent's hand decreased AND our hand increased, meaning they gave us a card
-              // Get the new card (last one in hand)
-              const receivedCard = myHand[myHand.length - 1];
-              
-              // Show incoming card animation
-              playIncomingAnimation(receivedCard);
-              
-              if (cardReceivedSound.current) {
-                cardReceivedSound.current.currentTime = 0;
-                cardReceivedSound.current.play().catch(e => console.log('Sound play failed:', e));
-              }
-            }
-            prevOpponentHandCount.current = opponentHandCount;
-            prevMyHandCount.current = myHand.length;
-          }, [opponentHandCount, myHand, gameState]);
-
           useEffect(() => {
             if (gameState === 'playing' && deckCount === 0 && myHand.length === 0 && opponentHandCount === 0 && !gameEnded) {
               gameDataRef.current.update({
@@ -760,6 +762,7 @@
           };
 
           const resetGame = () => {
+            lastHandledPassedCardRef.current = null;
             setGameState('setup');
             setGameEnded(false);
             setWinner(null);

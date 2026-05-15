@@ -1063,11 +1063,18 @@
                   }}
                 >
                   <div className="gf-pass-card-trail" />
-                  <img
-                    src={CARD_IMAGES[tossingCard.id]}
-                    alt={tossingCard.name}
-                    className="rounded-lg shadow-2xl gf-pass-card-image"
-                  />
+                  <div className="rounded-lg shadow-2xl gf-pass-card-image">
+                    <img
+                      src={CARD_IMAGES[tossingCard.id]}
+                      alt={tossingCard.name}
+                      className="gf-pass-card-face gf-pass-card-front"
+                    />
+                    <img
+                      src="https://i.ibb.co/B5bRmGbw/backimage.png"
+                      alt="Card back"
+                      className="gf-pass-card-face gf-pass-card-back"
+                    />
+                  </div>
                 </div>
               )}
               
@@ -1416,18 +1423,34 @@
                   }
                 }
                 .gf-pass-card-flight {
-                  animation: tossCard 2s cubic-bezier(.2, .72, .24, 1) forwards;
+                  animation: tossCard 2s cubic-bezier(.18, .7, .22, 1) forwards;
                   transform-origin: center center;
                   transform-style: preserve-3d;
                   will-change: transform, opacity, filter;
                 }
                 .gf-pass-card-image {
+                  position: relative;
                   width: 335px;
                   height: 430px;
-                  backface-visibility: visible;
-                  animation: passCardSpin 2s cubic-bezier(.2, .72, .24, 1) forwards;
+                  animation: passCardSpin 2s cubic-bezier(.18, .7, .22, 1) forwards;
                   filter: drop-shadow(0 26px 24px rgba(0, 52, 82, 0.28));
+                  transform-style: preserve-3d;
                   will-change: transform, filter;
+                }
+                .gf-pass-card-face {
+                  position: absolute;
+                  inset: 0;
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  border-radius: .5rem;
+                  backface-visibility: hidden;
+                }
+                .gf-pass-card-front {
+                  transform: rotateY(0deg);
+                }
+                .gf-pass-card-back {
+                  transform: rotateY(180deg);
                 }
                 .gf-pass-card-trail {
                   position: absolute;
@@ -1446,21 +1469,30 @@
                     opacity: 1;
                     filter: brightness(1);
                   }
-                  72% {
+                  76% {
                     opacity: .92;
                   }
+                  88% {
+                    opacity: 1;
+                  }
                   100% {
-                    transform: translate3d(48vw, -28vh, 0) rotateZ(2deg) scale(.22);
-                    opacity: 0;
-                    filter: brightness(.9);
+                    transform: translate3d(calc(50vw - 18.5rem), calc(-100vh + 450px), 0) rotateZ(0deg) scale(.22);
+                    opacity: 1;
+                    filter: brightness(.96);
                   }
                 }
                 @keyframes passCardSpin {
                   0% {
-                    transform: rotateZ(0deg);
+                    transform: rotateZ(0deg) rotateY(0deg);
+                  }
+                  72% {
+                    transform: rotateZ(12deg) rotateY(0deg);
+                  }
+                  84% {
+                    transform: rotateZ(8deg) rotateY(92deg);
                   }
                   100% {
-                    transform: rotateZ(18deg);
+                    transform: rotateZ(0deg) rotateY(180deg);
                   }
                 }
                 @keyframes passCardTrail {
@@ -1474,7 +1506,7 @@
                   }
                   100% {
                     opacity: 0;
-                    transform: translateX(10%) scaleX(.76);
+                    transform: translateX(38%) scaleX(.5);
                   }
                 }
                 @keyframes flash {

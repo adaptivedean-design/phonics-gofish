@@ -1434,8 +1434,6 @@
                   height: 430px;
                   animation: passCardSpin 2s cubic-bezier(.18, .7, .22, 1) forwards;
                   filter: drop-shadow(0 26px 24px rgba(0, 52, 82, 0.28));
-                  transform-style: preserve-3d;
-                  -webkit-transform-style: preserve-3d;
                   will-change: transform, filter;
                 }
                 .gf-pass-card-face {
@@ -1446,18 +1444,15 @@
                   height: 100%;
                   object-fit: cover;
                   border-radius: .5rem;
-                  backface-visibility: hidden;
-                  -webkit-backface-visibility: hidden;
-                  transform-style: preserve-3d;
-                  -webkit-transform-style: preserve-3d;
+                  will-change: opacity;
                 }
                 .gf-pass-card-front {
-                  transform: rotateY(0deg);
-                  -webkit-transform: rotateY(0deg);
+                  opacity: 1;
+                  animation: passCardFrontFace 2s linear forwards;
                 }
                 .gf-pass-card-back {
-                  transform: rotateY(180deg);
-                  -webkit-transform: rotateY(180deg);
+                  opacity: 0;
+                  animation: passCardBackFace 2s linear forwards;
                 }
                 .gf-pass-card-trail {
                   position: absolute;
@@ -1490,16 +1485,32 @@
                 }
                 @keyframes passCardSpin {
                   0% {
-                    transform: rotateZ(0deg) rotateY(0deg);
+                    transform: rotateZ(0deg) scaleX(1);
                   }
                   72% {
-                    transform: rotateZ(12deg) rotateY(0deg);
+                    transform: rotateZ(12deg) scaleX(1);
                   }
                   84% {
-                    transform: rotateZ(8deg) rotateY(92deg);
+                    transform: rotateZ(8deg) scaleX(.08);
                   }
                   100% {
-                    transform: rotateZ(0deg) rotateY(180deg);
+                    transform: rotateZ(0deg) scaleX(1);
+                  }
+                }
+                @keyframes passCardFrontFace {
+                  0%, 83.9% {
+                    opacity: 1;
+                  }
+                  84%, 100% {
+                    opacity: 0;
+                  }
+                }
+                @keyframes passCardBackFace {
+                  0%, 83.9% {
+                    opacity: 0;
+                  }
+                  84%, 100% {
+                    opacity: 1;
                   }
                 }
                 @keyframes passCardTrail {
